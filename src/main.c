@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
         // End timer
         end_t = clock();
 
-        printf("Time taken = %.3lf", (double)(end_t - start_t) / CLOCKS_PER_SEC);
+        printf("Time taken = %.3lf\n", (double)(end_t - start_t) / CLOCKS_PER_SEC);
         return 0;
     }
 
