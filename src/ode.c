@@ -1,5 +1,6 @@
 #include <ode.h>
 #include <math.h>
+#include <string.h>
 
 int NARODE (double t, const double z[], double dzdt[], void* params)
 {
@@ -17,7 +18,7 @@ int NARODE (double t, const double z[], double dzdt[], void* params)
     double KXZn = pow(p[3], n); // Raise to power of n
     double KZn = pow(p[4], n);
     double a = p[6];
-    int X = t >= tstart && t < tend; 
+    int X = t > tstart && t <= tend; 
 
     double Xn = pow(X, n);
     double Zn = pow(z[0], n);
@@ -26,7 +27,7 @@ int NARODE (double t, const double z[], double dzdt[], void* params)
     return GSL_SUCCESS;
 }
 
-int solve(gsl_odeiv2_driver* d, int maxIter, double y[], size_t nTraits)
+int solve(gsl_odeiv2_driver* d, int maxIter, double y[], size_t nTraits, int par_id)
 {
     double t = 0;
 
@@ -40,12 +41,49 @@ int solve(gsl_odeiv2_driver* d, int maxIter, double y[], size_t nTraits)
             fprintf(stderr, "error, return value = %d\n", status);
             break;
         }
+
+        double* p = (double*)d->sys->params;
+        double tstart = p[0];
+        double tend = p[1];
+        int X = t >= tstart && t < tend;
         // print solution to std out
         for (size_t j = 0; j < nTraits-1; ++j)
         {
-            printf("%.2lf, %.3lf,", ti, y[i]);
+            printf("%d, %.2lf, %d, %.3lf,", par_id, ti, X, y[i]);
         }
-        printf("%.2lf, %.3lf\n", ti, y[nTraits-1]);
+        printf("%d, %.2lf, %d, %.3lf\n", par_id, ti, X, y[nTraits-1]);
     }
     return GSL_SUCCESS;
+}
+
+
+const gsl_odeiv2_step_type* get_stepper_from_input(char* input_string)
+{
+    // Check the input is fine
+    if (input_string == NULL)
+    {
+        return NULL;
+    }
+
+    if (strcmp("rk4", input_string) == 0)
+    {
+        return gsl_odeiv2_step_rk4;
+    }
+
+    if (strcmp("rkf45", input_string) == 0)
+    {
+        return gsl_odeiv2_step_rkf45;
+    }
+
+    if (strcmp("msadams", input_string) == 0)
+    {
+        return gsl_odeiv2_step_msadams;
+    }
+
+    if (strcmp("rk4-fs", input_string) == 0)
+    {
+        return gsl_odeiv2_step_rk4;
+    }
+
+    return NULL;
 }
