@@ -33,23 +33,35 @@ params <- lapply(params, function(x) {
 
 iniState <- c(Z=0)
 times <- seq(0,tmax,by=dt)
-solution <- ode(iniState, times, ODE_NAR, params[[1]]) %>%
-  as.data.frame() %>%
-  as_tibble() %>%
-  mutate(X = ifelse(time > params[[1]]["Xstart"] & time <= params[[1]]["Xstop"], 1, 0)) %>%
-  select(time, X, Z)
+
+out_desolve <- data.frame(id = integer(length(params) * length(times)),
+                          time = double(length(params) * length(times)),
+                          X = double(length(params) * length(times)),
+                          Z = double(length(params) * length(times)))
+
+for (i in seq_along(params)) {
+  solution <- ode(iniState, times, ODE_NAR, params[[i]]) %>%
+    as.data.frame() %>%
+    as_tibble() %>%
+    mutate(id = i,
+           X = ifelse(time > params[[i]]["Xstart"] & time <= params[[i]]["Xstop"], 1, 0)) %>%
+    select(id, time, X, Z)
+  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
+  out_desolve[range,] <- solution
+}
 
 # Plotting colours
 colX   <- brewer.pal(6, "Paired")[2]
 colZ   <- brewer.pal(6, "Paired")[4]
 
-plotZ <- ggplot(solution) +
+plotZ <- ggplot(out_desolve) +
   annotate("rect", xmin = params[[1]]["Xstart"], xmax = params[[1]]["Xstop"], ymin = 0, ymax = 1.05,
            alpha = .2, fill = colX) +
-  geom_line(aes(time, Z), color = colZ, linewidth = 1) +
+  geom_line(aes(time, Z, colour = factor(id)), linewidth = 1) +
   scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Z expression") +
-  theme_bw(base_size = 16)
+  labs(x = "Time", y = "Z expression", colour = "Parameter combo") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
 plotZ
 
 # Run other examples
@@ -62,9 +74,10 @@ out <- read_csv(paste0(out, collapse = "\n"),
 plotZ_gsl <- ggplot(out) +
   annotate("rect", xmin = params[[1]]["Xstart"], xmax = params[[1]]["Xstop"], ymin = 0, ymax = 1.05,
            alpha = .2, fill = colX) +
-  geom_line(aes(time, Z, colour = as.factor(id)), linewidth = 1) +
+  geom_line(aes(time, Z, colour = factor(id)), linewidth = 1) +
   scale_y_continuous(limits = c(0,1.05)) +
   labs(x = "Time", y = "Z expression", colour = "Parameter combo") +
-  theme_bw(base_size = 16)
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
 plotZ_gsl
 
