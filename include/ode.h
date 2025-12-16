@@ -11,6 +11,6 @@ Hill coefficient n, and degradation rate a.
 
 int NARODE (double t, const double z[], double dzdt[], void* params);
 
-int solve(gsl_odeiv2_driver* d, int maxIter, double y[], size_t nTraits, int par_id);
+int solve(gsl_odeiv2_driver* d, int max_time, double y[], size_t nTraits, int par_id, double measure_interval);
 
 const gsl_odeiv2_step_type* get_stepper_from_input(char* input_string);

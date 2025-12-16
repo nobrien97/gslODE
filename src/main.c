@@ -63,13 +63,16 @@ void show_help()
         "Options:\n"
         "-h:                                    Print this help screen.\n"
         "-i:                                Provide an input .csv file.\n"
-        "    Example:                                      -i input.csv\n"
+        "Example:                                          -i input.csv\n"
         "-s:                                Provide a stepper function,\n"
         "                                     one of 'rk4', 'rkf45', or\n"
-        "                                                     'msadams'\n"
-        "    Example:                                            -s rk4\n"
-        "-f:                                     Use a fixed step size \n"
-        "                                          instead of adaptive.\n"
+        "                                                    'msadams'.\n"
+        "Example:                                                -s rk4\n"
+        "-f:                                     Specify an interval to\n"
+        "                                        measure the system at.\n"
+        "Example:                                                -f 0.1\n"
+        "-t                                      Maximum solution time.\n"
+        "Example:                                                -t 100\n"
         "\n"
     );
     return;
@@ -102,7 +105,7 @@ int main(int argc, char* argv[])
         gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45,
                                                     1e-6, 1e-6, 0.0);
 
-        error_code = solve(d, 100, y, 1, 1);
+        error_code = solve(d, 100, y, 1, 1, 0);
         gsl_odeiv2_driver_free(d);
 
         if (error_code != 0)
@@ -128,11 +131,13 @@ int main(int argc, char* argv[])
 
     char* filepath = NULL;
     const gsl_odeiv2_step_type* stepper = gsl_odeiv2_step_rkf45;
-    int fixedstepper = 0;
+    double measure_interval = 0.1;
+    double time = 10.0;
+    double stepsize = 0.1;
 
     int opt = 0;
 
-    while ((opt = getopt(argc, argv, ":i:s:hf")) != -1)
+    while ((opt = getopt(argc, argv, ":i:s:hf:t:")) != -1)
     {
         switch (opt)
         {
@@ -145,8 +150,12 @@ int main(int argc, char* argv[])
         case 'h':
             show_help();
             return 0;
+        case 't':
+            time = atof(optarg);
+            break;
         case 'f':
-            fixedstepper = 1;
+            measure_interval = atof(optarg);
+            break;
         default:
             break;
         }
@@ -167,12 +176,11 @@ int main(int argc, char* argv[])
     int par_id = 1;
 
     gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, stepper,
-                            1e-6, 1e-6, 0.0);
+                            1e-6, 1e-8, 0);
 
     while(fgets(buff, sizeof(buff), fp))
     {
         // Reset pars values so we can check for invalid rows with too few entries
-
         for (int i = 0; i < n_pars; ++i)
         {
             pars[i] = -1.0;
@@ -205,24 +213,12 @@ int main(int argc, char* argv[])
                 }
             }
 
-            // Apply fixed stepper
-            if (fixedstepper) 
-            {
-                error_code = gsl_odeiv2_driver_apply_fixed_step(d, &t, 1e-3, 1000, y);
-
-                if (!error_code)
-                {
-                    fprintf(stderr, "Unable to apply fixed step to stepper function %s\n", stepper->name);
-                    return 1;
-                }
-            }
-
             // Solve this iteration
-            error_code = solve(d, 100, y, 1, par_id++);
+            error_code = solve(d, time, y, 1, par_id++, measure_interval);
 
-            // Reset the driver
+            // Reset the driver/state
             gsl_odeiv2_driver_reset(d);
-
+            y[0] = 0.0;
             
             if (error_code != 0)
             {
