@@ -42,20 +42,20 @@ add_test(
 
 add_test(
   NAME test_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -f 1
 )
 
 add_test(
   NAME test_rk4_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rk4 -f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rk4 -f 0.1
 )
 
 add_test(
   NAME test_rkf45_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rkf45 -f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rkf45 -f 0.1
 )
 
 add_test(
   NAME test_msadams_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s msadams -f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s msadams -f 0.1
 )
