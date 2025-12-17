@@ -73,6 +73,8 @@ void show_help()
         "Example:                                                -f 0.1\n"
         "-t                                      Maximum solution time.\n"
         "Example:                                                -t 100\n"
+        "-o                              ODE to test. One of VanDerPol,\n"
+        "                                    NAR, Lorenz, or Robertson.\n"
         "\n"
     );
     return;
@@ -89,23 +91,27 @@ int main(int argc, char* argv[])
     start_t = clock();
 
     // Setup default parameters
-    double pars[7] = {1.0, 6.0, 1.0, 1.0, 1.0, 4.0, 1.0};
-    size_t n_pars = sizeof(pars) / sizeof(pars[0]);
+    struct ode* ODE = (struct ode*)malloc(sizeof(struct ode));
+
     double t = 0.0;
-    gsl_odeiv2_system sys = {NARODE, NULL, 7, &pars};
 
     int error_code = 0;
 
     // Setup output
-    double y[1] = {0.0};
     // No arguments, proceed with a default ODE parameter set
     if (argc == 1) 
     {
         fprintf(stderr, "No arguments, solving default system...\n");
+        // Setup ODE
+        get_ODE_from_input("NAR", ODE);
+        double pars[7] = {1.0, 6.0, 1.0, 1.0, 1.0, 4.0, 1.0};
+        update_ode_pars(ODE, pars, ODE->n_pars);
+        
+        gsl_odeiv2_system sys = {ODE->ODE_fn_ptr, NULL, ODE->n_y, ODE->pars};
         gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45,
                                                     1e-6, 1e-6, 0.0);
 
-        error_code = solve(d, 100, y, 1, 1, 0);
+        error_code = solve(d, 100, ODE->y, ODE->n_y, 1, 0);
         gsl_odeiv2_driver_free(d);
 
         if (error_code != 0)
@@ -113,6 +119,9 @@ int main(int argc, char* argv[])
             fprintf(stderr, "Error in solution, return value %d\n", error_code);
             return error_code;
         }
+
+        // Free ODE
+        free_ode_system(ODE);
         
         // End timer
         end_t = clock();
@@ -122,7 +131,6 @@ int main(int argc, char* argv[])
     }
 
     // With arguments, read in CSV and evaluate line by line
-    // TODO
     fprintf(stderr, "Loading parameter combinations...\n");
     FILE* fp;
     char* line = NULL;
@@ -135,9 +143,11 @@ int main(int argc, char* argv[])
     double time = 10.0;
     double stepsize = 0.1;
 
+    char* ode_str = "NAR";
+
     int opt = 0;
 
-    while ((opt = getopt(argc, argv, ":i:s:hf:t:")) != -1)
+    while ((opt = getopt(argc, argv, ":i:s:hf:t:o:")) != -1)
     {
         switch (opt)
         {
@@ -156,6 +166,8 @@ int main(int argc, char* argv[])
         case 'f':
             measure_interval = atof(optarg);
             break;
+        case 'o':
+            ode_str = optarg;
         default:
             break;
         }
@@ -172,6 +184,31 @@ int main(int argc, char* argv[])
     char** tokens;
     fp = fopen(filepath, "r");
 
+    if (fp == NULL)
+    {
+        fprintf(stderr, "Failed to load file at %s.\n", filepath);
+        return 1;
+    }
+
+    // Setup system
+    int ode_get_check = get_ODE_from_input(ode_str, ODE);
+    
+    if (ode_get_check)
+    {
+        fprintf(stderr, "Failed to get ode %s - use -h for available systems.\n", ode_str);
+        return 1;
+    }
+    
+    gsl_odeiv2_system sys = {ODE->ODE_fn_ptr, NULL, ODE->n_y, ODE->pars};
+    // Store initial conditions for reset later
+    double y_start[ODE->n_y];
+
+    for (int i = 0; i < ODE->n_y; ++i)
+    {
+        y_start[i] = ODE->y[i];
+    }
+
+
     // ID for parameter combination
     int par_id = 1;
 
@@ -181,9 +218,9 @@ int main(int argc, char* argv[])
     while(fgets(buff, sizeof(buff), fp))
     {
         // Reset pars values so we can check for invalid rows with too few entries
-        for (int i = 0; i < n_pars; ++i)
+        for (int i = 0; i < ODE->n_pars; ++i)
         {
-            pars[i] = -1.0;
+            ODE->pars[i] = -1.0;
         }
 
         // Split row by comma
@@ -193,19 +230,19 @@ int main(int argc, char* argv[])
             // Fill parameter array
             for (int i = 0; *(tokens + i); i++)
             {
-                if (i > n_pars - 1)
+                if (i > ODE->n_pars - 1)
                 {
                     fprintf(stderr, "Error, too many values in row\n");
                     return 1;
                 }
-                pars[i] = atof(*(tokens + i));
+                ODE->pars[i] = atof(*(tokens + i));
                 free(*(tokens + i));
             }
 
             // Check parameter array is properly filled
-            for (int i = 0; i < n_pars; ++i)
+            for (int i = 0; i < ODE->n_pars; ++i)
             {
-                if (pars[i] < 0.0)
+                if (ODE->pars[i] < 0.0)
                 {
                     fprintf(stderr, "Error, either too few supplied parameters in row or negative parameters given\n");
                     return 1;
@@ -214,12 +251,17 @@ int main(int argc, char* argv[])
             }
 
             // Solve this iteration
-            error_code = solve(d, time, y, 1, par_id++, measure_interval);
+            error_code = solve(d, time, ODE->y, ODE->n_y, par_id++, measure_interval);
 
             // Reset the driver/state
             gsl_odeiv2_driver_reset(d);
-            y[0] = 0.0;
             
+            for (int i = 0; i < ODE->n_y; ++i)
+            {
+                ODE->y[i] = y_start[i];
+            }
+            
+            // Check for errors
             if (error_code != 0)
             {
                 fprintf(stderr, "Error in solution, return value %d\n", error_code);
@@ -230,6 +272,9 @@ int main(int argc, char* argv[])
     
     // Free the ODE driver
     gsl_odeiv2_driver_free(d);
+
+    // Free ODE
+    free_ode_system(ODE);
 
     // End timer
     end_t = clock();

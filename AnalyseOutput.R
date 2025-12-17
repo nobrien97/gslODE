@@ -1,6 +1,7 @@
 library(deSolve)
 library(tidyverse)
 library(microbenchmark)
+library(cowplot)
 
 # Seed
 #seed <- sample(0:.Machine$integer.max, 1)
@@ -12,7 +13,7 @@ set.seed(seed)
 pars <- matrix(c(rep(c(1, 6), each = 10000),
                  abs(rnorm(50000))), nrow = 10000)
 
-write_csv(as.data.frame(pars), "./tests/test_input.csv", col_names = F)
+write_csv(as.data.frame(pars), "./tests/test_nar_input.csv", col_names = F)
 
 # Load example parameters
 pars <- read_csv("./tests/test_input.csv",
@@ -148,3 +149,138 @@ microbenchmark(
   out_desolve[range,] <- solution
   }
 )
+
+# Other systems
+
+## Van der Pol
+ODE_VDP <- function(t, state, parameters) {
+  with (as.list(c(state, parameters)), {
+    du <- v
+    dv <- -u + mu * v * (u*u - 1)
+    return(list(c(du, dv)))
+  })
+}
+
+## Lorenz
+ODE_Lorenz <- function(t, state, parameters) {
+  with (as.list(c(state, parameters)), {
+    dX <- sigma*(Y - X)
+    dY <- X*(rho - Z) - Y
+    dZ <- X*Y - beta*Z
+    return(list(c(dX, dY, dZ)))
+  })
+}
+
+## Robertson
+ODE_Robertson <- function(t, state, parameters) {
+  with (as.list(c(state, parameters)), {
+    dX <- -0.04 * X + 1e4 * Y * Z
+    dY <- 0.04 * X - 1e4 * Y * Z - 3e7 * Y * Y
+    dZ <- 3e7 * Y * Y
+    return(list(c(dX, dY, dZ)))
+  })
+}
+
+
+# Plot VDP for interval 0-10
+# Setup parameters
+dt <- 0.1
+tmax <- 10
+
+pars <- data.frame(mu = rnorm(10))
+
+params <- split(pars, seq(nrow(pars)))
+params <- lapply(params, function(x) {
+  unlist(x)
+})
+
+iniState <- c(u = 1.0, v = 0.0)
+times <- seq(0,tmax,by=dt)
+
+out_vdp_desolve <- data.frame(id = integer(length(params) * length(times)),
+                          time = double(length(params) * length(times)),
+                          u = double(length(params) * length(times)),
+                          v = double(length(params) * length(times)))
+
+for (i in seq_along(params)) {
+  solution <- ode(iniState, times, ODE_VDP, params[[i]]) %>%
+    as.data.frame() %>%
+    as_tibble() %>%
+    mutate(id = i) %>%
+    select(id, time, u, v)
+  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
+  out_vdp_desolve[range,] <- solution
+}
+
+# Plotting colours
+colX   <- "#00AAFF"
+pal <- c("#FF3300", "#5500FF")
+
+plotu <-ggplot(out_vdp_desolve) +
+  geom_line(aes(time, u, group = factor(id)), linewidth = 1,
+            colour = "grey") +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "u") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plotv <- ggplot(out_vdp_desolve) +
+  geom_line(aes(time, v, group = factor(id)), linewidth = 1,
+            colour = "grey") +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "v") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+plot_grid(plotu, plotv,
+          nrow = 2, labels = "AUTO")
+
+
+
+# Plot Robertson for interval t in [0, 40)
+# Setup parameters
+dt <- 0.1
+tmax <- 40
+
+params <- NULL
+
+iniState <- c(X = 1, Y = 0, Z = 0)
+times <- seq(0,tmax,by=dt)
+
+out_desolve <- data.frame(id = integer(length(params) * length(times)),
+                          time = double(length(params) * length(times)),
+                          X = double(length(params) * length(times)),
+                          Y = double(length(params) * length(times)),
+                          Z = double(length(params) * length(times)))
+
+out_rob_desolve <- ode(iniState, times, ODE_Robertson, params[[i]]) %>%
+    as.data.frame() %>%
+    as_tibble() %>%
+    mutate(id = 1) %>%
+    select(id, time, X, Y, Z)
+
+
+plotX_rob <- ggplot(out_rob_desolve) +
+  geom_line(aes(time, X), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "X") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plotY_rob <- ggplot(out_rob_desolve) +
+  geom_line(aes(time, Y), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "Y") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+
+plotZ_rob <- ggplot(out_rob_desolve) +
+  geom_line(aes(time, Z), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "Z") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plot_grid(plotX_rob, plotY_rob, plotZ_rob,
+          nrow = 3, labels = "AUTO")
+

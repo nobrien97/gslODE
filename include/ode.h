@@ -9,8 +9,30 @@ Hill coefficient n, and degradation rate a.
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_odeiv2.h>
 
-int NARODE (double t, const double z[], double dzdt[], void* params);
+struct ode
+{
+    int (*ODE_fn_ptr)(double, const double*, double*, void*);
+    double* pars;
+    size_t n_pars;
+    double* y;
+    size_t n_y;
+};
 
-int solve(gsl_odeiv2_driver* d, int max_time, double y[], size_t nTraits, int par_id, double measure_interval);
+int ODE_NAR(double t, const double z[], double dzdt[], void* params);
+int ODE_VanDerPol(double t, const double z[], double dzdt[], void* params);
+int ODE_Lorenz(double t, const double z[], double dzdt[], void* params);
+int ODE_Robertson(double t, const double z[], double dzdt[], void* params);
+
+int solve(gsl_odeiv2_driver* d, int max_time, double y[], size_t n_y, int par_id, double measure_interval);
 
 const gsl_odeiv2_step_type* get_stepper_from_input(char* input_string);
+
+int get_ODE_from_input(char* input_string, struct ode* ODE);
+
+int free_ode_system(struct ode* ODE);
+
+int update_ode_pars(struct ode* ODE, double* new_pars, size_t n_new_pars);
+
+int update_ode_start_conditions(struct ode* ODE, double* new_y, size_t n_new_y);
+
+int update_ode(struct ode* ODE, double* new_pars, size_t n_new_pars, double* new_y, size_t n_new_y);

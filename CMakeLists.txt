@@ -25,37 +25,87 @@ include(CTest)
 enable_testing()
 message(STATUS "${PROJECT_SOURCE_DIR}")
 
+# NAR tests
 add_test(
-  NAME test_rk4
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rk4
+  NAME test_nar_rk4
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s rk4
 )
 
 add_test(
-  NAME test_rkf45
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rkf45
+  NAME test_nar_rkf45
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s rkf45
 )
 
 add_test(
-  NAME test_msadams
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s msadams
+  NAME test_nar_msadams
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s msadams
 )
 
 add_test(
-  NAME test_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -f 1
+  NAME test_nar_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -f 1
 )
 
 add_test(
-  NAME test_rk4_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rk4 -f 0.1
+  NAME test_nar_rk4_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s rk4 -f 0.1
 )
 
 add_test(
-  NAME test_rkf45_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s rkf45 -f 0.1
+  NAME test_nar_rkf45_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s rkf45 -f 0.1
 )
 
 add_test(
-  NAME test_msadams_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_input.csv" -s msadams -f 0.1
+  NAME test_nar_msadams_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s msadams -f 0.1
+)
+
+
+# Van der Pol
+add_test(
+  NAME test_vdp_rk4_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_vdp_input.csv" -s rk4 -f 0.1 -o VanDerPol
+)
+
+add_test(
+  NAME test_vdp_rkf45_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_vdp_input.csv" -s rkf45 -f 0.1 -o VanDerPol
+)
+
+add_test(
+  NAME test_vdp_msadams_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_vdp_input.csv" -s msadams -f 0.1 -o VanDerPol
+)
+
+# Lorenz
+add_test(
+  NAME test_lorenz_rk4_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_lorenz_input.csv" -s rk4 -f 0.1 -o Lorenz
+)
+
+add_test(
+  NAME test_lorenz_rkf45_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_lorenz_input.csv" -s rkf45 -f 0.1 -o Lorenz
+)
+
+add_test(
+  NAME test_lorenz_msadams_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_lorenz_input.csv" -s msadams -f 0.1 -o Lorenz
+)
+
+# Robertson
+add_test(
+  NAME test_rob_rk4_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s rk4 -f 0.1 -o Robertson
+)
+
+add_test(
+  NAME test_rob_rkf45_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s rkf45 -f 0.1 -o Robertson
+)
+
+add_test(
+  NAME test_rob_msadams_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s msadams -f 0.1 -o Robertson
 )
