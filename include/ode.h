@@ -12,6 +12,7 @@ Hill coefficient n, and degradation rate a.
 struct ode
 {
     int (*ODE_fn_ptr)(double, const double*, double*, void*);
+    int (*jac)(double, const double*, double*, double*, void*);
     double* pars;
     size_t n_pars;
     double* y;
@@ -43,3 +44,5 @@ int update_ode_pars(struct ode* ODE, double* new_pars, size_t n_new_pars);
 int update_ode_start_conditions(struct ode* ODE, double* new_y, size_t n_new_y);
 
 int update_ode(struct ode* ODE, double* new_pars, size_t n_new_pars, double* new_y, size_t n_new_y);
+
+int print_ode(struct ode* ODE, int par_id, double t);

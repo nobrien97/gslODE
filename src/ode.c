@@ -50,6 +50,7 @@ int ODE_Lorenz(double t, const double y[], double f[], void* params)
     f[0] = sigma * (y[1] - y[0]);
     f[1] = y[0] * (rho - y[2]) - y[1];
     f[2] = y[0] * y[1] - beta * y[2];
+    return GSL_SUCCESS;
 }
 
 int ODE_Robertson(double t, const double y[], double f[], void* params)
@@ -158,21 +159,18 @@ int jac_vanderpol(double t, const double y[], double* dfdy, double dfdt[], void*
 /// @param par_id Index of this solution in the matrix of input parameters.
 /// @param measure_interval How often to measure during the simulation.
 /// @return GSL_SUCCESS if successful, a GSL error code if not.
-int solve(gsl_odeiv2_driver* d, int max_time, double y[], size_t n_y, int par_id, double measure_interval)
+int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval)
 {
     double t = 0;
     int status = 0;
-    double* p = (double*)d->sys->params;
-    double tstart = p[0];
-    double tend = p[1];
-    int X = 0;
+    size_t n_y = ODE->n_y;
+    double* y = ODE->y;
 
     int max_iter = max_time / measure_interval;
-    for (int i = 0; i < max_iter; ++i)
+    for (int i = 1; i < max_iter; ++i)
     {
-        double ti = i * measure_interval;
-        status = gsl_odeiv2_driver_apply(d, &t, ti, y);
-        
+        double ti = t + measure_interval;
+        status = gsl_odeiv2_driver_apply(d, &t, ti, y);        
         if (status != GSL_SUCCESS)
         {
             fprintf(stderr, "Stepper function %s failed on step %d - error %s\n", d->s->type->name, i, gsl_strerror(status));
@@ -276,6 +274,7 @@ const int get_ODE_from_input(char* input_string, struct ode* ODE)
     if (strcmp("NAR", input_string) == 0)
     {
         ODE->ODE_fn_ptr = &ODE_NAR;
+        ODE->jac = &jac_nar;
         ODE->n_pars = 7;
         ODE->n_y = 1;
         ODE->pars = (double*)malloc(sizeof(double) * ODE->n_pars);
@@ -288,6 +287,7 @@ const int get_ODE_from_input(char* input_string, struct ode* ODE)
     if (strcmp("VanDerPol", input_string) == 0)
     {
         ODE->ODE_fn_ptr = &ODE_VanDerPol;
+        ODE->jac = &jac_vanderpol;
         ODE->n_pars = 1;
         ODE->n_y = 2;
         ODE->pars = (double*)malloc(sizeof(double) * ODE->n_pars);
@@ -301,6 +301,7 @@ const int get_ODE_from_input(char* input_string, struct ode* ODE)
     if (strcmp("Lorenz", input_string) == 0)
     {
         ODE->ODE_fn_ptr = &ODE_Lorenz;
+        ODE->jac = NULL;
         ODE->n_pars = 3;
         ODE->n_y = 3;
         ODE->pars = (double*)malloc(sizeof(double) * ODE->n_pars);
@@ -315,7 +316,8 @@ const int get_ODE_from_input(char* input_string, struct ode* ODE)
     if (strcmp("Robertson", input_string) == 0)
     {
         ODE->ODE_fn_ptr = &ODE_Robertson;
-        ODE->n_pars = 0;
+        ODE->jac = &jac_robertson;
+        ODE->n_pars = 3;
         ODE->n_y = 3;
         ODE->pars = (double*)malloc(sizeof(double) * ODE->n_pars);
         ODE->y = (double*)malloc(sizeof(double) * ODE->n_y);

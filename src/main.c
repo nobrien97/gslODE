@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
         gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45,
                                                     1e-6, 1e-6, 0.0);
 
-        error_code = solve(d, 100, ODE->y, ODE->n_y, 1, 0);
+        error_code = solve(d, 100, ODE, 1, 0);
         gsl_odeiv2_driver_free(d);
 
         if (error_code != 0)
@@ -199,7 +199,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    gsl_odeiv2_system sys = {ODE->ODE_fn_ptr, NULL, ODE->n_y, ODE->pars};
+    gsl_odeiv2_system sys = {ODE->ODE_fn_ptr, ODE->jac, ODE->n_y, ODE->pars};
     // Store initial conditions for reset later
     double y_start[ODE->n_y];
 
@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
     int par_id = 1;
 
     gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, stepper,
-                            1e-6, 1e-8, 0);
+                            1e-8, 1e-12, 0);
 
     while(fgets(buff, sizeof(buff), fp))
     {
@@ -225,7 +225,7 @@ int main(int argc, char* argv[])
 
         // Split row by comma
         tokens = str_split(buff, ',');
-        if (tokens)
+        if (tokens && ODE->n_pars > 0)
         {
             // Fill parameter array
             for (int i = 0; *(tokens + i); i++)
@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
             }
 
             // Solve this iteration
-            error_code = solve(d, time, ODE->y, ODE->n_y, par_id++, measure_interval);
+            error_code = solve(d, time, ODE, par_id++, measure_interval);
 
             // Reset the driver/state
             gsl_odeiv2_driver_reset(d);
