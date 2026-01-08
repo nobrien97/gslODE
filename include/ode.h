@@ -18,12 +18,19 @@ struct ode
     size_t n_y;
 };
 
+// ODEs
 int ODE_NAR(double t, const double z[], double dzdt[], void* params);
 int ODE_VanDerPol(double t, const double z[], double dzdt[], void* params);
 int ODE_Lorenz(double t, const double z[], double dzdt[], void* params);
 int ODE_Robertson(double t, const double z[], double dzdt[], void* params);
 
-int solve(gsl_odeiv2_driver* d, int max_time, double y[], size_t n_y, int par_id, double measure_interval);
+// Jacobian
+int jac_robertson(double t, const double y[], double* dfdy, double dfdt[], void* params);
+int jac_nar(double t, const double y[], double* dfdy, double dfdt[], void* params);
+int jac_vanderpol(double t, const double y[], double* dfdy, double dfdt[], void* params);
+
+// Solver and helper functions
+int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval);
 
 const gsl_odeiv2_step_type* get_stepper_from_input(char* input_string);
 
