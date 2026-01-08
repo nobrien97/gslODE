@@ -32,6 +32,11 @@ add_test(
 )
 
 add_test(
+  NAME test_nar_msbdf
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s bsimp -f 0.1
+)
+
+add_test(
   NAME test_nar_rkf45
   COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_nar_input.csv" -s rkf45
 )
@@ -78,6 +83,12 @@ add_test(
   COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_vdp_input.csv" -s msadams -f 0.1 -o VanDerPol
 )
 
+add_test(
+  NAME test_vdp_msbdf_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_vdp_input.csv" -s bsimp -f 0.1 -o VanDerPol
+)
+
+
 # Lorenz
 add_test(
   NAME test_lorenz_rk4_f
@@ -94,7 +105,7 @@ add_test(
   COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_lorenz_input.csv" -s msadams -f 0.1 -o Lorenz
 )
 
-# Robertson
+# Robertson: this is a stiff system, should not work except with implicit solvers
 add_test(
   NAME test_rob_rk4_f
   COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s rk4 -f 0.1 -o Robertson
@@ -106,6 +117,6 @@ add_test(
 )
 
 add_test(
-  NAME test_rob_msadams_f
-  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s msadams -f 0.1 -o Robertson
+  NAME test_rob_msbdf_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s msbdf -f 0.1 -o Robertson
 )
