@@ -150,6 +150,35 @@ int jac_vanderpol(double t, const double y[], double* dfdy, double dfdt[], void*
     return GSL_SUCCESS;
 }
 
+int jac_lorenz(double t, const double y[], double* dfdy, double dfdt[], void* params)
+{
+    (void)(t); /* avoid unused parameter warning */
+    double* p = (double*)params;
+    double sigma = p[0];
+    double rho = p[1];
+    double beta = p[2];
+
+    gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 3, 3);
+    gsl_matrix * m = &dfdy_mat.matrix;
+    gsl_matrix_set (m, 0, 0, -sigma);
+    gsl_matrix_set (m, 0, 1, sigma);
+    gsl_matrix_set (m, 0, 2, 0.0);
+    
+    gsl_matrix_set (m, 1, 1, rho - y[2]);
+    gsl_matrix_set (m, 1, 1, -1.0);
+    gsl_matrix_set (m, 1, 2, -y[0]);
+
+    gsl_matrix_set (m, 2, 0, y[1]);
+    gsl_matrix_set (m, 2, 1, y[0]);
+    gsl_matrix_set (m, 2, 2, -beta);
+
+    dfdt[0] = 0.0;
+    dfdt[1] = 0.0;
+    dfdt[2] = 0.0;
+    return GSL_SUCCESS;
+}
+
+
 
 /// @brief Solves an ODE.
 /// @param d The ODE driver.
@@ -301,7 +330,7 @@ const int get_ODE_from_input(char* input_string, struct ode* ODE)
     if (strcmp("Lorenz", input_string) == 0)
     {
         ODE->ODE_fn_ptr = &ODE_Lorenz;
-        ODE->jac = NULL;
+        ODE->jac = &jac_lorenz;
         ODE->n_pars = 3;
         ODE->n_y = 3;
         ODE->pars = (double*)malloc(sizeof(double) * ODE->n_pars);
@@ -386,4 +415,26 @@ int update_ode(struct ode* ODE, double* new_pars, size_t n_new_pars, double* new
     }
 
     return 0;
+}
+
+int method_requires_jacobian(const char* method_name)
+{
+    if (method_name == NULL)
+    {
+        fprintf(stderr, "Invalid method name - see -h for available models.\n");
+        return 1;
+    }
+
+    if (strcmp(method_name, "msbdf") == 0)
+    {
+        return 1;
+    }
+
+    if (strcmp(method_name, "bsimp") == 0)
+    {
+        return 1;
+    }
+
+    return 0;
+
 }

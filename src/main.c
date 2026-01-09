@@ -200,6 +200,22 @@ int main(int argc, char* argv[])
     }
     
     gsl_odeiv2_system sys = {ODE->ODE_fn_ptr, ODE->jac, ODE->n_y, ODE->pars};
+
+    // Check if there is a Jacobian and if the method requires one
+    int requires_jacobian = method_requires_jacobian(stepper->name);
+    if (requires_jacobian == -1)
+    {
+        fprintf(stderr, "Error reading method name %s - use -h for available systems.\n", stepper->name);
+        return 1;
+    }
+
+    if (requires_jacobian == 1 && ODE->jac == NULL)
+    {
+        fprintf(stderr, "Method %s requires a Jacobian which is not available for system %s.\n", 
+            stepper->name, ode_str);
+        return 1;
+    }
+
     // Store initial conditions for reset later
     double y_start[ODE->n_y];
 

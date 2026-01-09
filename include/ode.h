@@ -29,6 +29,8 @@ int ODE_Robertson(double t, const double z[], double dzdt[], void* params);
 int jac_robertson(double t, const double y[], double* dfdy, double dfdt[], void* params);
 int jac_nar(double t, const double y[], double* dfdy, double dfdt[], void* params);
 int jac_vanderpol(double t, const double y[], double* dfdy, double dfdt[], void* params);
+int jac_lorenz(double t, const double y[], double* dfdy, double dfdt[], void* params);
+
 
 // Solver and helper functions
 int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval);
@@ -45,4 +47,6 @@ int update_ode_start_conditions(struct ode* ODE, double* new_y, size_t n_new_y);
 
 int update_ode(struct ode* ODE, double* new_pars, size_t n_new_pars, double* new_y, size_t n_new_y);
 
-int print_ode(struct ode* ODE, int par_id, double t);
+int print_ode(struct ode* ODE, int par_id, double t, int benchmark);
+
+int method_requires_jacobian(const char* method_name);
