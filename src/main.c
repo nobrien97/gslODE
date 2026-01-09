@@ -75,6 +75,15 @@ void show_help()
         "Example:                                                -t 100\n"
         "-o                              ODE to test. One of VanDerPol,\n"
         "                                    NAR, Lorenz, or Robertson.\n"
+        "-b:                                     Benchmark mode: return\n"
+        "                               total relative error across all\n" 
+        "                                        components, time taken\n"
+        "-a                                     Maximum absolute error.\n"
+        "                                            Defaults to 1e-10.\n"
+        "Example:                                              -a 1e-10\n"
+        "-r                                     Maximum relative error.\n"
+        "                                              Defaults to 1e-6\n"
+        "Example:                                               -r 1e-6\n"
         "\n"
     );
     return;
@@ -109,9 +118,9 @@ int main(int argc, char* argv[])
         
         gsl_odeiv2_system sys = {ODE->ODE_fn_ptr, NULL, ODE->n_y, ODE->pars};
         gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45,
-                                                    1e-6, 1e-6, 0.0);
+                                                    1e-6, 1e-10, 1e-6);
 
-        error_code = solve(d, 100, ODE, 1, 0);
+        error_code = solve(d, 100, ODE, 1, 0, 0);
         gsl_odeiv2_driver_free(d);
 
         if (error_code != 0)
@@ -142,12 +151,15 @@ int main(int argc, char* argv[])
     double measure_interval = 0.1;
     double time = 10.0;
     double stepsize = 0.1;
+    int benchmark = 0;
+    double a_err = 1e-10;
+    double r_err = 1e-6;
 
     char* ode_str = "NAR";
 
     int opt = 0;
 
-    while ((opt = getopt(argc, argv, ":i:s:hf:t:o:")) != -1)
+    while ((opt = getopt(argc, argv, ":i:s:hf:t:o:ba:r:")) != -1)
     {
         switch (opt)
         {
@@ -168,6 +180,16 @@ int main(int argc, char* argv[])
             break;
         case 'o':
             ode_str = optarg;
+            break;
+        case 'b':
+            benchmark = 1;
+            break;
+        case 'a':
+            a_err = atof(optarg);
+            break;
+        case 'r':
+            r_err = atof(optarg);
+            break;
         default:
             break;
         }
@@ -229,7 +251,8 @@ int main(int argc, char* argv[])
     int par_id = 1;
 
     gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, stepper,
-                            1e-8, 1e-12, 0);
+                            1e-10, a_err, r_err);
+
 
     while(fgets(buff, sizeof(buff), fp))
     {
@@ -267,7 +290,7 @@ int main(int argc, char* argv[])
             }
 
             // Solve this iteration
-            error_code = solve(d, time, ODE, par_id++, measure_interval);
+            error_code = solve(d, time, ODE, par_id++, measure_interval, benchmark);
 
             // Reset the driver/state
             gsl_odeiv2_driver_reset(d);
@@ -275,6 +298,14 @@ int main(int argc, char* argv[])
             for (int i = 0; i < ODE->n_y; ++i)
             {
                 ODE->y[i] = y_start[i];
+            }
+
+            // End timer
+            if (benchmark == 1)
+            {
+                end_t = clock();
+                double time = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+                fprintf(stdout, "%d, %.8le, %.8le, %.8le", par_id, a_err, r_err, time);
             }
             
             // Check for errors
@@ -292,9 +323,7 @@ int main(int argc, char* argv[])
     // Free ODE
     free_ode_system(ODE);
 
-    // End timer
-    end_t = clock();
-    fprintf(stderr, "Time taken = %.3lf\n", (double)(end_t - start_t) / CLOCKS_PER_SEC);
+    //fprintf(stderr, "Time taken = %.3lf\n", (double)(end_t - start_t) / CLOCKS_PER_SEC);
 
     return error_code;
 }

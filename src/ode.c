@@ -188,7 +188,7 @@ int jac_lorenz(double t, const double y[], double* dfdy, double dfdt[], void* pa
 /// @param par_id Index of this solution in the matrix of input parameters.
 /// @param measure_interval How often to measure during the simulation.
 /// @return GSL_SUCCESS if successful, a GSL error code if not.
-int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval)
+int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval, int benchmark)
 {
     double t = 0;
     int status = 0;
@@ -196,10 +196,10 @@ int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, doubl
     double* y = ODE->y;
 
     int max_iter = max_time / measure_interval;
-    for (int i = 1; i < max_iter; ++i)
+    for (int i = 0; i <= max_iter; ++i)
     {
-        double ti = t + measure_interval;
-        status = gsl_odeiv2_driver_apply(d, &t, ti, y);        
+        double ti = i * measure_interval;
+        status = gsl_odeiv2_driver_apply(d, &t, ti, y);
         if (status != GSL_SUCCESS)
         {
             fprintf(stderr, "Stepper function %s failed on step %d - error %s\n", d->s->type->name, i, gsl_strerror(status));
@@ -207,12 +207,15 @@ int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, doubl
         }
         
         // print solution to std out
-        print_ode(ODE, par_id, t);
+        if (benchmark == 0)
+        {
+            print_ode(ODE, par_id, t, benchmark);
+        }
     }
     return GSL_SUCCESS;
 }
 
-int print_ode(struct ode* ODE, int par_id, double t)
+int print_ode(struct ode* ODE, int par_id, double t, int benchmark)
 {
     size_t n_y = ODE->n_y;
     double* y = ODE->y;

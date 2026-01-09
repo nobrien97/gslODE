@@ -33,7 +33,7 @@ int jac_lorenz(double t, const double y[], double* dfdy, double dfdt[], void* pa
 
 
 // Solver and helper functions
-int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval);
+int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, double measure_interval, int benchmark);
 
 const gsl_odeiv2_step_type* get_stepper_from_input(char* input_string);
 
