@@ -440,7 +440,60 @@ plotZ_rob_gsl <- ggplot(out_rob_gsl) +
 plot_grid(plotX_rob_gsl, plotY_rob_gsl, plotZ_rob_gsl,
           nrow = 3, labels = "AUTO")
 
+# Similarity
+out_rob_gsl$id <- factor(out_rob_gsl$id)
+out_rob_gsl$time <- factor(round(out_rob_gsl$time, digits = 1))
+out_rob_desolve$id <- factor(out_rob_desolve$id)
+out_rob_desolve$time <- factor(round(out_rob_desolve$time, digits = 1))
 
+out_rob_diff <- full_join(out_rob_gsl, out_rob_desolve, by = c("id", "time"))
+
+out_rob_diff <- out_rob_diff %>%
+  rename(x_gsl = X.x,
+         y_gsl = Y.x,
+         z_gsl = Z.x,
+         x_desolve = X.y,
+         y_desolve = Y.y,
+         z_desolve = Z.y) %>%
+  group_by(id, time) %>%
+  mutate(x_diff = x_gsl - x_desolve,
+         y_diff = y_gsl - y_desolve,
+         z_diff = z_gsl - z_desolve) %>%
+  pivot_longer(cols = c(x_diff, y_diff, z_diff), names_to = "solution", values_to = "diff",
+               names_pattern = "(.*)_diff")
+
+# Boxplot
+ggplot(out_rob_diff,
+       aes(x = time, y = diff, colour = solution)) +
+  geom_boxplot(whisker.linewidth = 0.1,
+               outliers = T) +
+  theme_bw() +
+  labs(x = "Time",
+       y = "Difference between \ndeSolve vs GSL (msbdf)",
+       colour = "Variable") +
+  theme(text = element_text(size = 12),
+        legend.position = "bottom")
+
+# Over all time points
+ggplot(out_rob_diff,
+       aes(y = diff, colour = solution)) +
+  geom_boxplot(whisker.linewidth = 0.1,
+               outliers = T) +
+  theme_bw() +
+  labs(y = "Difference between \ndeSolve vs GSL (msbdf)",
+       colour = "Solution") +
+  theme(text = element_text(size = 12),
+        legend.position = "bottom")
+
+# No difference between them in these solutions
+t.test(out_rob_diff[out_rob_diff$solution == "x",]$x_gsl,
+       out_rob_diff[out_rob_diff$solution == "x",]$x_desolve)
+
+t.test(out_rob_diff[out_rob_diff$solution == "y",]$y_gsl,
+       out_rob_diff[out_rob_diff$solution == "y",]$y_desolve)
+
+t.test(out_rob_diff[out_rob_diff$solution == "z",]$z_gsl,
+       out_rob_diff[out_rob_diff$solution == "z",]$z_desolve)
 
 
 # Plot Lorenz system
