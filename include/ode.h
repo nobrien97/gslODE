@@ -14,8 +14,8 @@ struct ode
     int (*ODE_fn_ptr)(double, const double*, double*, void*);
     int (*jac)(double, const double*, double*, double*, void*);
     double* pars;
-    size_t n_pars;
     double* y;
+    size_t n_pars;
     size_t n_y;
 };
 
