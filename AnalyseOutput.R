@@ -531,3 +531,154 @@ for (i in seq_along(params)) {
 # 3d plot
 plot_ly(out_lor_desolve, x = ~X, y = ~Y, z = ~Z,
         type = "scatter3d", mode = "lines")
+
+plotX_lor_desolve <- ggplot(out_lor_desolve) +
+  geom_line(aes(as.numeric(time), X), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "X") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plotY_lor_desolve <- ggplot(out_lor_desolve) +
+  geom_line(aes(as.numeric(time), Y), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "Y") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+
+plotZ_lor_desolve <- ggplot(out_lor_desolve) +
+  geom_line(aes(as.numeric(time), Z), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "Z") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plot_grid(plotX_lor_desolve, plotY_lor_desolve, plotZ_lor_desolve,
+          nrow = 3, labels = "AUTO")
+
+
+# GSL
+out_lor_gsl <- system("./build/GSLODE -i './tests/test_lorenz_input.csv' -f 0.01 -t 100 -s msadams -o Lorenz",
+                      intern = T, ignore.stderr = T)
+
+out_lor_gsl <- read_csv(paste0(out_lor_gsl, collapse = "\n"),
+                        col_names = c("id", "time", "X", "Y", "Z"))
+
+plot_ly(out_lor_gsl, x = ~X, y = ~Y, z = ~Z,
+        type = "scatter3d", mode = "lines")
+
+
+plotX_lor_gsl <- ggplot(out_lor_gsl) +
+  geom_line(aes(as.numeric(time), X), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "X") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plotY_lor_gsl <- ggplot(out_lor_gsl) +
+  geom_line(aes(as.numeric(time), Y), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "Y") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+
+plotZ_lor_gsl <- ggplot(out_lor_gsl) +
+  geom_line(aes(as.numeric(time), Z), linewidth = 1) +
+  #scale_y_continuous(limits = c(0,1.05)) +
+  labs(x = "Time", y = "Z") +
+  theme_bw(base_size = 16) +
+  theme(text = element_text(size = 12), legend.position = "bottom")
+
+plot_grid(plotX_lor_gsl, plotY_lor_gsl, plotZ_lor_gsl,
+          nrow = 3, labels = "AUTO")
+
+# Similarity
+out_lor_gsl$id <- factor(out_lor_gsl$id)
+out_lor_gsl$time <- factor(round(out_lor_gsl$time, digits = 2))
+out_lor_desolve$id <- factor(out_lor_desolve$id)
+out_lor_desolve$time <- factor(round(out_lor_desolve$time, digits = 2))
+
+out_lor_diff <- full_join(out_lor_gsl, out_lor_desolve, by = c("id", "time"))
+
+out_lor_diff <- out_lor_diff %>%
+  rename(x_gsl = X.x,
+         y_gsl = Y.x,
+         z_gsl = Z.x,
+         x_desolve = X.y,
+         y_desolve = Y.y,
+         z_desolve = Z.y) %>%
+  group_by(id, time) %>%
+  mutate(x_diff = x_gsl - x_desolve,
+         y_diff = y_gsl - y_desolve,
+         z_diff = z_gsl - z_desolve) %>%
+  pivot_longer(cols = c(x_diff, y_diff, z_diff), names_to = "solution", values_to = "diff",
+               names_pattern = "(.*)_diff")
+
+# Boxplot
+ggplot(out_lor_diff,
+       aes(x = time, y = diff, colour = solution)) +
+  geom_boxplot(whisker.linewidth = 0.1,
+               outliers = T) +
+  theme_bw() +
+  labs(x = "Time",
+       y = "Difference between \ndeSolve vs GSL (msbdf)",
+       colour = "Variable") +
+  theme(text = element_text(size = 12),
+        legend.position = "bottom")
+
+# Over all time points
+ggplot(out_lor_diff,
+       aes(y = diff, colour = solution)) +
+  geom_boxplot(whisker.linewidth = 0.1,
+               outliers = T) +
+  theme_bw() +
+  labs(y = "Difference between \ndeSolve vs GSL (msbdf)",
+       colour = "Solution") +
+  theme(text = element_text(size = 12),
+        legend.position = "bottom")
+
+# These ones are different in x and y - and by quite a lot in some cases!
+# This could be down to precision?
+t.test(out_lor_diff[out_lor_diff$solution == "x",]$x_gsl,
+       out_lor_diff[out_lor_diff$solution == "x",]$x_desolve)
+
+t.test(out_lor_diff[out_lor_diff$solution == "y",]$y_gsl,
+       out_lor_diff[out_lor_diff$solution == "y",]$y_desolve)
+
+t.test(out_lor_diff[out_lor_diff$solution == "z",]$z_gsl,
+       out_lor_diff[out_lor_diff$solution == "z",]$z_desolve)
+
+# Benchmark
+a_err <- 10^(-16:-6)
+r_err <- 10^(-16:-6)
+
+err <- expand.grid(a_err, r_err)
+
+base_call <- "./build/GSLODE -i './tests/test_lorenz_input.csv' -f 0.01 -t 100 -s msadams -o Lorenz -b"
+
+out_lor_bench <- data.frame(i = numeric(nrow(err)),
+                            a_err = numeric(nrow(err)),
+                            r_err = numeric(nrow(err)),
+                            t = numeric(nrow(err)))
+
+for (i in seq_len(nrow(err))) {
+  str_call <- paste(base_call, "-a", err[i,]$Var1, "-r", err[i,]$Var2)
+
+  out <- system(str_call, intern = T, ignore.stderr = T)
+  out_lor_bench[i,] <- read_csv(paste0(out, "\n"), col_names = F, show_col_types = F)
+}
+
+ggplot(out_lor_bench %>%
+         rename(err_a = a_err,
+                err_r = r_err) %>%
+         pivot_longer(cols = c(err_a, err_r), names_prefix = "err_",
+                      names_to = "err_type", values_to = "err_value"),
+       aes(x = err_value, y = t, colour = err_type)) +
+  geom_point() +
+  scale_x_log10() +
+  labs(x = "Error", y = "Time (s)", colour = "Error type") +
+  scale_colour_viridis_d(labels = c("Absolute", "Relative")) +
+  theme_bw() +
+  theme(text = element_text(size = 12), legend.position = "bottom")
