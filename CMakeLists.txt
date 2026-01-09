@@ -105,6 +105,11 @@ add_test(
   COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_lorenz_input.csv" -s msadams -f 0.1 -o Lorenz
 )
 
+add_test(
+  NAME test_lorenz_msbdf_f
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_lorenz_input.csv" -s msbdf -f 0.1 -o Lorenz
+)
+
 # Robertson: this is a stiff system, should not work except with implicit solvers
 add_test(
   NAME test_rob_rk4_f
@@ -119,4 +124,14 @@ add_test(
 add_test(
   NAME test_rob_msbdf_f
   COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s msbdf -f 0.1 -o Robertson
+)
+
+add_test(
+  NAME test_errors
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s msbdf -f 0.1 -o Robertson -a 1e-8 -r 1e-4
+)
+
+add_test(
+  NAME test_benchmark
+  COMMAND ${PROJECT_NAME} -i "${PROJECT_SOURCE_DIR}/tests/test_rob_input.csv" -s msbdf -f 0.1 -o Robertson -b
 )
