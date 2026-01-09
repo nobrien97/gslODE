@@ -236,7 +236,7 @@ ODE_Robertson <- function(t, state, parameters) {
 # Plot VDP for interval 0-10
 # Setup parameters
 dt <- 0.1
-tmax <- 9.9
+tmax <- 10
 
 pars <- data.frame(mu = c(1, 0))
 
@@ -341,7 +341,7 @@ ggplot(out_vdp_diff,
   theme(text = element_text(size = 12),
         legend.position = "bottom")
 
-# Random over time
+# Over all time points
 ggplot(out_vdp_diff,
        aes(y = diff, colour = solution)) +
   geom_boxplot(whisker.linewidth = 0.1,
@@ -352,7 +352,7 @@ ggplot(out_vdp_diff,
   theme(text = element_text(size = 12),
         legend.position = "bottom")
 
-# ZeroNo difference between them in these solutions
+# No difference between them in these solutions
 t.test(out_vdp_diff[out_vdp_diff$solution == "u",]$u_gsl,
        out_vdp_diff[out_vdp_diff$solution == "u",]$u_desolve)
 
@@ -497,8 +497,8 @@ t.test(out_rob_diff[out_rob_diff$solution == "z",]$z_gsl,
 
 
 # Plot Lorenz system
-dt <- 0.1
-tmax <- 10
+dt <- 0.01
+tmax <- 100
 
 pars <- data.frame(sigma = 10,
                    rho = 28,
