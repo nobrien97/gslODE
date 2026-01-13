@@ -242,7 +242,7 @@ ODE_Robertson <- function(t, state, parameters) {
 dt <- 0.1
 tmax <- 10
 
-pars <- data.frame(mu = c(1, 0))
+pars <- data.frame(mu = 1)
 
 params <- split(pars, seq(nrow(pars)))
 params <- lapply(params, function(x) {
@@ -347,12 +347,12 @@ ggplot(out_vdp_diff,
 
 # Over all time points
 ggplot(out_vdp_diff,
-       aes(y = diff, colour = solution)) +
+       aes(y = diff, x = solution)) +
   geom_boxplot(whisker.linewidth = 0.1,
                outliers = T) +
   theme_bw() +
   labs(y = "Difference in u \ndeSolve vs GSL (RK4)",
-       colour = "Solution") +
+       x = "Solution") +
   theme(text = element_text(size = 12),
         legend.position = "bottom")
 
