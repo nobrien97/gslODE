@@ -3,6 +3,10 @@ library(tidyverse)
 library(microbenchmark)
 library(cowplot)
 library(plotly)
+library(paletteer)
+library(ggh4x)
+library(see)
+library(latex2exp)
 
 # Seed
 #seed <- sample(0:.Machine$integer.max, 1)
@@ -653,32 +657,116 @@ t.test(out_lor_diff[out_lor_diff$solution == "z",]$z_gsl,
 # Benchmark
 a_err <- 10^(-16:-6)
 r_err <- 10^(-16:-6)
+methods <- c("rkf45", "msbdf", "bsimp", "msadams")
+models <- c("NAR", "Lorenz", "Robertson", "VanDerPol")
+model_inputs <- c("./tests/test_nar_input.csv", "./tests/test_lorenz_input.csv",
+                  "./tests/test_rob_input.csv", "./tests/test_vdp_input.csv")
 
-err <- expand.grid(a_err, r_err)
 
-base_call <- "./build/GSLODE -i './tests/test_lorenz_input.csv' -f 0.01 -t 100 -s msadams -o Lorenz -b"
+err <- expand.grid(a_err, r_err, methods, models)
 
-out_lor_bench <- data.frame(i = numeric(nrow(err)),
+err <- err %>%
+  mutate(method_index = as.integer(as.factor(Var4)),
+         filename = model_inputs[method_index])
+
+base_call <- "./build/GSLODE -f 0.01 -t 100 -b"
+
+out_bench <- data.frame(i = numeric(nrow(err)),
                             a_err = numeric(nrow(err)),
                             r_err = numeric(nrow(err)),
                             t = numeric(nrow(err)))
 
+pb <- progress::progress_bar$new(
+  format = "[:bar] :current/:total (:percent eta: :eta)", total = nrow(err))
+pb$tick(0)
+
 for (i in seq_len(nrow(err))) {
-  str_call <- paste(base_call, "-a", err[i,]$Var1, "-r", err[i,]$Var2)
+  str_call <- paste(base_call, "-i", err[i,]$filename, "-o", err[i,]$Var4,
+                    "-a", err[i,]$Var1, "-r", err[i,]$Var2, "-s", err[i,]$Var3)
 
   out <- system(str_call, intern = T, ignore.stderr = T)
-  out_lor_bench[i,] <- read_csv(paste0(out, "\n"), col_names = F, show_col_types = F)
+  out_bench[i,] <- read_csv(paste0(out, "\n"), col_names = F, show_col_types = F)
+  out_bench[i,1] <- i
+  pb$tick(1)
 }
 
-ggplot(out_lor_bench %>%
+out_bench <- out_bench %>%
+  mutate(method = err[i,]$Var3,
+         model = err[i,]$Var4)
+
+
+ggplot(out_bench %>%
          rename(err_a = a_err,
                 err_r = r_err) %>%
          pivot_longer(cols = c(err_a, err_r), names_prefix = "err_",
                       names_to = "err_type", values_to = "err_value"),
-       aes(x = err_value, y = t, colour = err_type)) +
-  geom_point() +
-  scale_x_log10() +
-  labs(x = "Error", y = "Time (s)", colour = "Error type") +
-  scale_colour_viridis_d(labels = c("Absolute", "Relative")) +
+       aes(x = as.factor(err_value), y = t, colour = err_type)) +
+  facet_nested("ODE System" + model ~ "Stepper" + method) +
+  geom_boxplot() +
+  scale_y_log10() +
+  scale_x_discrete(labels = paste(16:6)) +
+  labs(x = TeX("Error $(10^{-x})$"), y = "Time (s)", colour = "Error type") +
+  scale_colour_manual(values = c("#09283CFF", "#CB1724FF"), labels = c("Absolute", "Relative")) +
   theme_bw() +
-  theme(text = element_text(size = 12), legend.position = "bottom")
+  theme(text = element_text(size = 12), legend.position = "bottom") -> plt_bench_all
+
+plt_bench_all
+ggsave("plt_benchmark_err.png", device = png, bg = "white", width = 9*1.5, height = 5*1.5)
+
+
+
+
+
+# For a high and a low amount of absolute error, run many replicates to compare repeatability
+a_err <- c(10^-16, 10^-6)
+err <- expand.grid(a_err, methods, models)
+
+err <- err %>%
+  mutate(method_index = as.integer(as.factor(Var3)),
+         filename = model_inputs[method_index])
+
+# Repeat each call for replicates
+err <- err %>%
+  slice(rep(1:n(), each = 100))
+
+base_call <- "./build/GSLODE -f 0.01 -t 100 -b"
+
+out_bench_reps <- data.frame(i = numeric(nrow(err)),
+                        a_err = numeric(nrow(err)),
+                        r_err = numeric(nrow(err)),
+                        t = numeric(nrow(err)))
+
+pb <- progress::progress_bar$new(
+  format = "[:bar] :current/:total (:percent eta: :eta)", total = nrow(err))
+pb$tick(0)
+
+for (i in seq_len(nrow(err))) {
+  str_call <- paste(base_call, "-i", err[i,]$filename, "-o", err[i,]$Var3,
+                    "-a", err[i,]$Var1, "-s", err[i,]$Var2)
+  
+  out <- system(str_call, intern = T, ignore.stderr = T)
+  out_bench_reps[i,] <- read_csv(paste0(out, "\n"), col_names = F, show_col_types = F)
+  out_bench_reps[i,1] <- i
+  pb$tick(1)
+}
+
+out_bench_reps <- out_bench_reps %>%
+  mutate(method = err[i,]$Var2,
+         model = err[i,]$Var3)
+
+ggplot(out_bench_reps %>%
+         rename(err_a = a_err,
+                err_r = r_err) %>%
+         pivot_longer(cols = c(err_a, err_r), names_prefix = "err_",
+                      names_to = "err_type", values_to = "err_value"),
+       aes(x = method, y = t, colour = model)) +
+  facet_nested("Absolute error" + as.factor(err_value)~.) +
+  geom_boxplot() +
+  scale_y_log10() + 
+  labs(x = "Stepping function", y = "Time (s)", colour = "Model") +
+  scale_colour_paletteer_d("nationalparkcolors::Everglades") +
+  theme_bw() +
+  theme(text = element_text(size = 12), legend.position = "bottom") -> plt_bench_reps
+plt_bench_reps
+ggsave("plt_benchmark_reps.png", device = png, bg = "white", width = 6, height = 8)
+
