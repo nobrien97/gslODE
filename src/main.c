@@ -65,7 +65,7 @@ void show_help()
         "-i:                                Provide an input .csv file.\n"
         "Example:                                          -i input.csv\n"
         "-s:                                Provide a stepper function,\n"
-        "                               one of 'rk4', 'rkf45', 'msbdf',\n"
+        "                                      one of 'rkf45', 'msbdf',\n"
         "                                         'bsimp' or 'msadams'.\n"
         "Example:                                                -s rk4\n"
         "-f:                                     Specify an interval to\n"

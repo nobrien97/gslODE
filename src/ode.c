@@ -257,11 +257,6 @@ const gsl_odeiv2_step_type* get_stepper_from_input(char* input_string)
         return NULL;
     }
 
-    if (strcmp("rk4", input_string) == 0)
-    {
-        return gsl_odeiv2_step_rk4;
-    }
-
     if (strcmp("rkf45", input_string) == 0)
     {
         return gsl_odeiv2_step_rkf45;
