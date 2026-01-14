@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(GSLODE)
 
+set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
+
 list(FILTER SOURCES EXCLUDE REGEX "gsl/*")
 file(GLOB_RECURSE SOURCES src/*.c)
 
