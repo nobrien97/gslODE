@@ -96,13 +96,10 @@ int main(int argc, char* argv[])
 
     // Time solver
     clock_t start_t, end_t;
-    double total_t;
     start_t = clock();
 
     // Setup default parameters
     struct ode* ODE = (struct ode*)malloc(sizeof(struct ode));
-
-    double t = 0.0;
 
     int error_code = 0;
 
@@ -142,15 +139,11 @@ int main(int argc, char* argv[])
     // With arguments, read in CSV and evaluate line by line
     fprintf(stderr, "Loading parameter combinations...\n");
     FILE* fp;
-    char* line = NULL;
-    size_t len = 0;
-    long read;
 
     char* filepath = NULL;
     const gsl_odeiv2_step_type* stepper = gsl_odeiv2_step_rkf45;
     double measure_interval = 0.1;
     double time = 10.0;
-    double stepsize = 0.1;
     int benchmark = 0;
     double a_err = 1e-10;
     double r_err = 1e-6;
