@@ -18,6 +18,9 @@ I ran performance tests on a AMD Ryzen 7 5800HS @3.2GHz with the test app compil
 I measured performance across 100 replicate runs at two absolute error targets:
 ![](./plt_benchmark_reps.png)
 
+And across many error targets:
+![](./plt_benchmark_err.png)
+
 Stepper performance was dependent on the system, but in general was fast (apart from msadams, which was slow across the board, although fairly stable in performance across all models except the NAR - perhaps for larger systems it might compare better?)
 
 We also measured solution similarities vs the R ```LSODA``` solver implemented in ```deSolve```:
