@@ -33,180 +33,13 @@ ODE_NAR <- function(t, state, parameters) {
     # step function leads to numerical issues in lsoda:
     #dZ <- bZ * (t > Xstart && t <= Xstop & Z<1) - aZ*Z
     # use Hill function instead:
-    X <- (t > Xstart && t <= Xstop)
+    X <- (t >= Xstart && t <= Xstop)
     dZ <- b * X * (X^n)/(KXZ^n + X^n) * (KZ^n)/(KZ^n + Z^n) - a*Z
     return(list(dZ))
   })
 }
 
-# Setup parameters
-dt <- 0.1
-tmax <- 9.9
-
-params <- split(pars, seq(nrow(pars)))
-params <- lapply(params, function(x) {
-  unlist(x)
-})
-
-iniState <- c(Z=0)
-times <- seq(0,tmax,by=dt)
-
-out_desolve <- data.frame(id = integer(length(params) * length(times)),
-                          time = double(length(params) * length(times)),
-                          X = double(length(params) * length(times)),
-                          Z = double(length(params) * length(times)))
-
-for (i in seq_along(params)) {
-  solution <- ode(iniState, times, ODE_NAR, params[[i]]) %>%
-    as.data.frame() %>%
-    as_tibble() %>%
-    mutate(id = i,
-           X = ifelse(time > params[[i]]["Xstart"] & time <= params[[i]]["Xstop"], 1, 0)) %>%
-    select(id, time, X, Z)
-  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
-  out_desolve[range,] <- solution
-}
-
-# Plotting colours
-colX   <- "#00AAFF"
-pal <- c("#FF3300", "#5500FF")
-
-plotZ <- ggplot(out_desolve %>% filter(id < 3 & id > 0)) +
-  annotate("rect", xmin = params[[1]]["Xstart"], xmax = params[[1]]["Xstop"], ymin = 0, ymax = 1.05,
-           alpha = .2, fill = colX) +
-  geom_line(aes(time, Z, colour = factor(id)), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  scale_colour_manual(values = pal) +
-  labs(x = "Time", y = "Z expression", colour = "Parameter combo") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-plotZ
-
-# Run other examples
-out <- system("./build/GSLODE -i './tests/test_nar_input.csv' -f 0.1 -s rk4",
-       intern = T, ignore.stderr = T)
-
-out <- read_csv(paste0(out, collapse = "\n"),
-                col_names = c("id", "time", "X", "Z"))
-
-plotZ_gsl <- ggplot(out %>% filter(id < 3)) +
-  annotate("rect", xmin = params[[1]]["Xstart"], xmax = params[[1]]["Xstop"], ymin = 0, ymax = 1.05,
-           alpha = .2, fill = colX) +
-  geom_line(aes(time, Z, colour = factor(id)), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  scale_colour_manual(values = pal) +
-  labs(x = "Time", y = "Z expression", colour = "Parameter combo") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-plotZ_gsl
-
-# Correlation
-out$id <- factor(out$id)
-out$time <- factor(round(out$time, digits = 1))
-
-out_desolve_bak <- out_desolve
-
-out_desolve$id <- factor(out_desolve$id)
-out_desolve$time <- factor(round(out_desolve$time, digits = 1))
-
-out_diff <- full_join(out, out_desolve, by = c("id", "time"))
-
-out_diff <- out_diff %>%
-  rename(X_gsl = X.x,
-         Z_gsl = Z.x,
-         X_desolve = X.y,
-         Z_desolve = Z.y) %>%
-  group_by(id, time) %>%
-  mutate(Z_diff = Z_gsl - Z_desolve)
-
-# box plot
-ggplot(out_diff,
-       aes(x = time, y = Z_diff)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = F) +
-  theme_bw() +
-  labs(x = "Time",
-       y = "Difference in Z expression\ndeSolve vs GSL (RK4)") +
-  theme(text = element_text(size = 12))
-
-# Doesn't appear to change over time, look at overall
-ggplot(out_diff,
-       aes(y = Z_diff)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = F) +
-  theme_bw() +
-  labs(y = "Difference in Z expression\ndeSolve vs GSL (RK4)") +
-  theme(text = element_text(size = 12))
-
-t.test(out_diff$Z_gsl, out_diff$Z_desolve)
-
-# GSL is more likely to come up with solutions greater than deSolve, but they are
-# on average very similar
-
-# What if we try a different solving method
-# Run other examples
-out_msadams <- system("./build/GSLODE -i './tests/test_nar_input.csv' -f 0.1 -s msadams",
-              intern = T, ignore.stderr = T)
-
-out_msadams <- read_csv(paste0(out_msadams, collapse = "\n"),
-                col_names = c("id", "time", "X", "Z"))
-
-out_msadams_diff <- out_msadams
-out_msadams_diff$id <- factor(out_msadams_diff$id)
-out_msadams_diff$time <- factor(round(out_msadams_diff$time, digits = 1))
-
-out_msadams_diff <- full_join(out_msadams_diff, out_desolve, by = c("id", "time"))
-
-out_msadams_diff <- out_msadams_diff %>%
-  rename(X_gsl = X.x,
-         Z_gsl = Z.x,
-         X_desolve = X.y,
-         Z_desolve = Z.y) %>%
-  group_by(id, time) %>%
-  mutate(Z_diff = Z_gsl - Z_desolve)
-
-# Boxplot
-ggplot(out_msadams_diff,
-       aes(x = time, y = Z_diff)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = F) +
-  theme_bw() +
-  labs(x = "Time",
-       y = "Difference in Z expression\ndeSolve vs GSL (Adams)") +
-  theme(text = element_text(size = 12))
-
-# Doesn't appear to change over time, look at overall
-ggplot(out_msadams_diff,
-       aes(y = Z_diff)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = F) +
-  theme_bw() +
-  labs(y = "Difference in Z expression\ndeSolve vs GSL (Adams)") +
-  theme(text = element_text(size = 12))
-
-t.test(out_msadams_diff$Z_gsl, out_msadams_diff$Z_desolve)
-
-
-# Benchmark
-
-microbenchmark(system("./build/GSLODE -i './tests/test_nar_input.csv'",
-                             intern = T, ignore.stderr = T)
-               )
-microbenchmark(
-  for (i in seq_along(params)) {
-  solution <- ode(iniState, times, ODE_NAR, params[[i]]) %>%
-    as.data.frame() %>%
-    as_tibble() %>%
-    mutate(id = i,
-           X = ifelse(time > params[[i]]["Xstart"] & time <= params[[i]]["Xstop"], 1, 0)) %>%
-    select(id, time, X, Z)
-  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
-  out_desolve[range,] <- solution
-  }
-)
-
 # Other systems
-
 ## Van der Pol
 ODE_VDP <- function(t, state, parameters) {
   with (as.list(c(state, parameters)), {
@@ -236,423 +69,6 @@ ODE_Robertson <- function(t, state, parameters) {
   })
 }
 
-
-# Plot VDP for interval 0-10
-# Setup parameters
-dt <- 0.1
-tmax <- 10
-
-pars <- data.frame(mu = 1)
-
-params <- split(pars, seq(nrow(pars)))
-params <- lapply(params, function(x) {
-  unlist(x)
-})
-
-iniState <- c(u = 1.0, v = 0.0)
-times <- seq(0,tmax,by=dt)
-
-out_vdp_desolve <- data.frame(id = integer(length(params) * length(times)),
-                          time = double(length(params) * length(times)),
-                          u = double(length(params) * length(times)),
-                          v = double(length(params) * length(times)))
-
-for (i in seq_along(params)) {
-  solution <- ode(iniState, times, ODE_VDP, params[[i]]) %>%
-    as.data.frame() %>%
-    as_tibble() %>%
-    mutate(id = i) %>%
-    select(id, time, u, v)
-  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
-  out_vdp_desolve[range,] <- solution
-}
-
-# Plotting colours
-colX   <- "#00AAFF"
-pal <- c("#FF3300", "#5500FF")
-
-plotu <-ggplot(out_vdp_desolve) +
-  geom_line(aes(time, u, colour = factor(id)), linewidth = 1) +#,
-            #colour = "grey") +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "u") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plotv <- ggplot(out_vdp_desolve) +
-  geom_line(aes(time, v, colour = factor(id)), linewidth = 1)+#,
-            #colour = "grey") +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "v") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-plot_grid(plotu, plotv,
-          nrow = 2, labels = "AUTO")
-
-# Plot in GSL
-out_vdp_gsl <- system("./build/GSLODE -i './tests/test_vdp_input.csv' -f 0.1 -s rk4 -o VanDerPol",
-              intern = T, ignore.stderr = T)
-
-out_vdp_gsl <- read_csv(paste0(out_vdp_gsl, collapse = "\n"),
-                col_names = c("id", "time", "u", "v"))
-
-plotu_gsl <-ggplot(out_vdp_gsl) +
-  geom_line(aes(time, u, colour = factor(id)), linewidth = 1)+#,
-            #colour = "grey") +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "u") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plotv_gsl <- ggplot(out_vdp_gsl) +
-  geom_line(aes(time, v, colour = factor(id)), linewidth = 1)+#,
-            #colour = "grey") +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "v") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-plot_grid(plotu_gsl, plotv_gsl,
-          nrow = 2, labels = "AUTO")
-
-# Similarity
-out_vdp_gsl$id <- factor(out_vdp_gsl$id)
-out_vdp_gsl$time <- factor(round(out_vdp_gsl$time, digits = 1))
-out_vdp_desolve$id <- factor(out_vdp_desolve$id)
-out_vdp_desolve$time <- factor(round(out_vdp_desolve$time, digits = 1))
-
-out_vdp_diff <- full_join(out_vdp_gsl, out_vdp_desolve, by = c("id", "time"))
-
-out_vdp_diff <- out_vdp_diff %>%
-  rename(u_gsl = u.x,
-         v_gsl = v.x,
-         u_desolve = u.y,
-         v_desolve = v.y) %>%
-  group_by(id, time) %>%
-  mutate(u_diff = u_gsl - u_desolve,
-         v_diff = v_gsl - v_desolve) %>%
-  pivot_longer(cols = c(u_diff, v_diff), names_to = "solution", values_to = "diff",
-               names_pattern = "(.*)_diff")
-
-# Boxplot
-ggplot(out_vdp_diff,
-       aes(x = time, y = diff, colour = solution)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = T) +
-  theme_bw() +
-  labs(x = "Time",
-       y = "Difference in u \ndeSolve vs GSL (RK4)",
-       colour = "Variable") +
-  theme(text = element_text(size = 12),
-        legend.position = "bottom")
-
-# Over all time points
-ggplot(out_vdp_diff,
-       aes(y = diff, x = solution)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = T) +
-  theme_bw() +
-  labs(y = "Difference in u \ndeSolve vs GSL (RK4)",
-       x = "Solution") +
-  theme(text = element_text(size = 12),
-        legend.position = "bottom")
-
-# No difference between them in these solutions
-t.test(out_vdp_diff[out_vdp_diff$solution == "u",]$u_gsl,
-       out_vdp_diff[out_vdp_diff$solution == "u",]$u_desolve)
-
-t.test(out_vdp_diff[out_vdp_diff$solution == "v",]$v_gsl,
-       out_vdp_diff[out_vdp_diff$solution == "v",]$v_desolve)
-
-
-# Plot Robertson for interval t in [0, 40)
-# Setup parameters
-dt <- 0.1
-tmax <- 40
-
-params <- NULL
-
-iniState <- c(X = 1, Y = 0, Z = 0)
-times <- seq(0,tmax,by=dt)
-
-out_desolve <- data.frame(id = integer(length(params) * length(times)),
-                          time = double(length(params) * length(times)),
-                          X = double(length(params) * length(times)),
-                          Y = double(length(params) * length(times)),
-                          Z = double(length(params) * length(times)))
-
-out_rob_desolve <- ode(iniState, times, ODE_Robertson, params[[1]]) %>%
-    as.data.frame() %>%
-    as_tibble() %>%
-    mutate(id = 1) %>%
-    select(id, time, X, Y, Z)
-
-
-plotX_rob <- ggplot(out_rob_desolve) +
-  geom_line(aes(time, X), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "X") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plotY_rob <- ggplot(out_rob_desolve) +
-  geom_line(aes(time, Y), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Y") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-
-plotZ_rob <- ggplot(out_rob_desolve) +
-  geom_line(aes(time, Z), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Z") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plot_grid(plotX_rob, plotY_rob, plotZ_rob,
-          nrow = 3, labels = "AUTO")
-
-# GSL solution
-out_rob_gsl <- system("./build/GSLODE -i './tests/test_rob_input.csv' -f 0.1 -t 40 -s msbdf -o Robertson",
-                      intern = T, ignore.stderr = T)
-
-out_rob_gsl <- read_csv(paste0(out_rob_gsl, collapse = "\n"),
-                        col_names = c("id", "time", "X", "Y", "Z"))
-
-plotX_rob_gsl <- ggplot(out_rob_gsl) +
-  geom_line(aes(time, X), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "X") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plotY_rob_gsl <- ggplot(out_rob_gsl) +
-  geom_line(aes(time, Y), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Y") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-
-plotZ_rob_gsl <- ggplot(out_rob_gsl) +
-  geom_line(aes(time, Z), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Z") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plot_grid(plotX_rob_gsl, plotY_rob_gsl, plotZ_rob_gsl,
-          nrow = 3, labels = "AUTO")
-
-# Similarity
-out_rob_gsl$id <- factor(out_rob_gsl$id)
-out_rob_gsl$time <- factor(round(out_rob_gsl$time, digits = 1))
-out_rob_desolve$id <- factor(out_rob_desolve$id)
-out_rob_desolve$time <- factor(round(out_rob_desolve$time, digits = 1))
-
-out_rob_diff <- full_join(out_rob_gsl, out_rob_desolve, by = c("id", "time"))
-
-out_rob_diff <- out_rob_diff %>%
-  rename(x_gsl = X.x,
-         y_gsl = Y.x,
-         z_gsl = Z.x,
-         x_desolve = X.y,
-         y_desolve = Y.y,
-         z_desolve = Z.y) %>%
-  group_by(id, time) %>%
-  mutate(x_diff = x_gsl - x_desolve,
-         y_diff = y_gsl - y_desolve,
-         z_diff = z_gsl - z_desolve) %>%
-  pivot_longer(cols = c(x_diff, y_diff, z_diff), names_to = "solution", values_to = "diff",
-               names_pattern = "(.*)_diff")
-
-# Boxplot
-ggplot(out_rob_diff,
-       aes(x = time, y = diff, colour = solution)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = T) +
-  theme_bw() +
-  labs(x = "Time",
-       y = "Difference between \ndeSolve vs GSL (msbdf)",
-       colour = "Variable") +
-  theme(text = element_text(size = 12),
-        legend.position = "bottom")
-
-# Over all time points
-ggplot(out_rob_diff,
-       aes(y = diff, colour = solution)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = T) +
-  theme_bw() +
-  labs(y = "Difference between \ndeSolve vs GSL (msbdf)",
-       colour = "Solution") +
-  theme(text = element_text(size = 12),
-        legend.position = "bottom")
-
-# No difference between them in these solutions
-t.test(out_rob_diff[out_rob_diff$solution == "x",]$x_gsl,
-       out_rob_diff[out_rob_diff$solution == "x",]$x_desolve)
-
-t.test(out_rob_diff[out_rob_diff$solution == "y",]$y_gsl,
-       out_rob_diff[out_rob_diff$solution == "y",]$y_desolve)
-
-t.test(out_rob_diff[out_rob_diff$solution == "z",]$z_gsl,
-       out_rob_diff[out_rob_diff$solution == "z",]$z_desolve)
-
-
-# Plot Lorenz system
-dt <- 0.01
-tmax <- 100
-
-pars <- data.frame(sigma = 10,
-                   rho = 28,
-                   beta = 8/3)
-
-params <- split(pars, seq(nrow(pars)))
-params <- lapply(params, function(x) {
-  unlist(x)
-})
-
-iniState <- c(X = 1.0, Y = 1.0, Z = 1.0)
-times <- seq(0,tmax,by=dt)
-
-out_lor_desolve <- data.frame(id = integer(length(params) * length(times)),
-                              time = double(length(params) * length(times)),
-                              X = double(length(params) * length(times)),
-                              Y = double(length(params) * length(times)),
-                              Z = double(length(params) * length(times)))
-
-for (i in seq_along(params)) {
-  solution <- ode(iniState, times, ODE_Lorenz, params[[i]]) %>%
-    as.data.frame() %>%
-    as_tibble() %>%
-    mutate(id = i) %>%
-    select(id, time, X, Y, Z)
-  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
-  out_lor_desolve[range,] <- solution
-}
-
-# 3d plot
-plot_ly(out_lor_desolve, x = ~X, y = ~Y, z = ~Z,
-        type = "scatter3d", mode = "lines")
-
-plotX_lor_desolve <- ggplot(out_lor_desolve) +
-  geom_line(aes(as.numeric(time), X), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "X") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plotY_lor_desolve <- ggplot(out_lor_desolve) +
-  geom_line(aes(as.numeric(time), Y), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Y") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-
-plotZ_lor_desolve <- ggplot(out_lor_desolve) +
-  geom_line(aes(as.numeric(time), Z), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Z") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plot_grid(plotX_lor_desolve, plotY_lor_desolve, plotZ_lor_desolve,
-          nrow = 3, labels = "AUTO")
-
-
-# GSL
-out_lor_gsl <- system("./build/GSLODE -i './tests/test_lorenz_input.csv' -f 0.01 -t 100 -s msadams -o Lorenz",
-                      intern = T, ignore.stderr = T)
-
-out_lor_gsl <- read_csv(paste0(out_lor_gsl, collapse = "\n"),
-                        col_names = c("id", "time", "X", "Y", "Z"))
-
-plot_ly(out_lor_gsl, x = ~X, y = ~Y, z = ~Z,
-        type = "scatter3d", mode = "lines")
-
-
-plotX_lor_gsl <- ggplot(out_lor_gsl) +
-  geom_line(aes(as.numeric(time), X), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "X") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plotY_lor_gsl <- ggplot(out_lor_gsl) +
-  geom_line(aes(as.numeric(time), Y), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Y") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-
-plotZ_lor_gsl <- ggplot(out_lor_gsl) +
-  geom_line(aes(as.numeric(time), Z), linewidth = 1) +
-  #scale_y_continuous(limits = c(0,1.05)) +
-  labs(x = "Time", y = "Z") +
-  theme_bw(base_size = 16) +
-  theme(text = element_text(size = 12), legend.position = "bottom")
-
-plot_grid(plotX_lor_gsl, plotY_lor_gsl, plotZ_lor_gsl,
-          nrow = 3, labels = "AUTO")
-
-# Similarity
-out_lor_gsl$id <- factor(out_lor_gsl$id)
-out_lor_gsl$time <- factor(round(out_lor_gsl$time, digits = 2))
-out_lor_desolve$id <- factor(out_lor_desolve$id)
-out_lor_desolve$time <- factor(round(out_lor_desolve$time, digits = 2))
-
-out_lor_diff <- full_join(out_lor_gsl, out_lor_desolve, by = c("id", "time"))
-
-out_lor_diff <- out_lor_diff %>%
-  rename(x_gsl = X.x,
-         y_gsl = Y.x,
-         z_gsl = Z.x,
-         x_desolve = X.y,
-         y_desolve = Y.y,
-         z_desolve = Z.y) %>%
-  group_by(id, time) %>%
-  mutate(x_diff = x_gsl - x_desolve,
-         y_diff = y_gsl - y_desolve,
-         z_diff = z_gsl - z_desolve) %>%
-  pivot_longer(cols = c(x_diff, y_diff, z_diff), names_to = "solution", values_to = "diff",
-               names_pattern = "(.*)_diff")
-
-# Boxplot
-ggplot(out_lor_diff,
-       aes(x = time, y = diff, colour = solution)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = T) +
-  theme_bw() +
-  labs(x = "Time",
-       y = "Difference between \ndeSolve vs GSL (msbdf)",
-       colour = "Variable") +
-  theme(text = element_text(size = 12),
-        legend.position = "bottom")
-
-# Over all time points
-ggplot(out_lor_diff,
-       aes(y = diff, colour = solution)) +
-  geom_boxplot(whisker.linewidth = 0.1,
-               outliers = T) +
-  theme_bw() +
-  labs(y = "Difference between \ndeSolve vs GSL (msbdf)",
-       colour = "Solution") +
-  theme(text = element_text(size = 12),
-        legend.position = "bottom")
-
-# These ones are different in x and y - and by quite a lot in some cases!
-# This could be down to precision?
-t.test(out_lor_diff[out_lor_diff$solution == "x",]$x_gsl,
-       out_lor_diff[out_lor_diff$solution == "x",]$x_desolve)
-
-t.test(out_lor_diff[out_lor_diff$solution == "y",]$y_gsl,
-       out_lor_diff[out_lor_diff$solution == "y",]$y_desolve)
-
-t.test(out_lor_diff[out_lor_diff$solution == "z",]$z_gsl,
-       out_lor_diff[out_lor_diff$solution == "z",]$z_desolve)
 
 # Benchmark
 a_err <- 10^(-16:-6)
@@ -743,7 +159,7 @@ pb$tick(0)
 for (i in seq_len(nrow(err))) {
   str_call <- paste(base_call, "-i", err[i,]$filename, "-o", err[i,]$Var3,
                     "-a", err[i,]$Var1, "-s", err[i,]$Var2)
-  
+
   out <- system(str_call, intern = T, ignore.stderr = T)
   out_bench_reps[i,] <- read_csv(paste0(out, "\n"), col_names = F, show_col_types = F)
   out_bench_reps[i,1] <- i
@@ -762,11 +178,206 @@ ggplot(out_bench_reps %>%
        aes(x = method, y = t, colour = model)) +
   facet_nested("Absolute error" + as.factor(err_value)~.) +
   geom_boxplot() +
-  scale_y_log10() + 
+  scale_y_log10() +
   labs(x = "Stepping function", y = "Time (s)", colour = "Model") +
   scale_colour_paletteer_d("nationalparkcolors::Everglades") +
   theme_bw() +
   theme(text = element_text(size = 12), legend.position = "bottom") -> plt_bench_reps
 plt_bench_reps
 ggsave("plt_benchmark_reps.png", device = png, bg = "white", width = 6, height = 8)
+
+# Similarity
+err <- expand.grid(methods, models)
+
+err <- err %>%
+  mutate(model_index = as.integer(as.factor(Var2)),
+         filename = model_inputs[model_index])
+
+base_call <- "./build/GSLODE -f 0.01 -t 100"
+
+out_comp_gsl <- data.frame(id = numeric(nrow(err) * length(times)),
+                          time = numeric(nrow(err) * length(times)),
+                          X = numeric(nrow(err) * length(times)),
+                          Y = numeric(nrow(err) * length(times)),
+                          Z = numeric(nrow(err) * length(times)))
+
+pb <- progress::progress_bar$new(
+  format = "[:bar] :current/:total (:percent eta: :eta)", total = nrow(err))
+pb$tick(0)
+
+for (i in seq_len(nrow(err))) {
+  out_this_iter <- system(paste(base_call, "-s", err[i,]$Var1, "-o",
+                                err[i,]$Var2, "-i", err[i,]$filename),
+                          intern = T, ignore.stderr = T)
+  out_comp_gsl[((i-1)*length(times) + 1):(length(times) * i),] <- read_csv(paste0(out_this_iter, collapse = "\n"),
+                                                                          col_names = c("id", "time", "X", "Y", "Z"),
+                                                                          show_col_types = F)
+  out_comp_gsl[((i-1)*length(times) + 1):(length(times) * i),]$id <- i
+  pb$tick(1)
+}
+
+out_comp_gsl <- out_comp_gsl %>%
+  mutate(method = err[id,]$Var1,
+         model = err[id,]$Var2)
+
+# Run models in deSolve
+
+# Run R solution for comparison
+
+# Setup parameters
+dt <- 0.01
+tmax <- 100
+
+# Set parameter sets
+params <- list(NAR = c(Xstart = 1, Xstop = 80, b = 1, KXZ = 1, KZ = 1, n = 1, a = 1),
+               Lorenz = c(sigma = 10, rho = 28, beta = 2.666667),
+               Robertson = NULL,
+               VanDerPol = c(mu = 1))
+
+times <- seq(0,tmax,by=dt)
+
+getODEFromModelName <- function(x) {
+  switch (x,
+    "NAR" = { return(ODE_NAR) },
+    "Lorenz" = { return(ODE_Lorenz) },
+    "Robertson" = { return(ODE_Robertson) },
+    "VanDerPol" = { return(ODE_VDP) }
+  )
+}
+
+getIniStateFromModelName <- function(x) {
+  switch (x,
+    "NAR" = { return(c(Z = 0)) },
+    "Lorenz" = { return(c(X = 1, Y = 1, Z = 1)) },
+    "Robertson" = { return(c(X = 1, Y = 0, Z = 0)) },
+    "VanDerPol" = { return(c(u = 1.0, v = 0.0)) }
+  )
+}
+
+out_comp_desolve <- data.frame(id = integer(length(models) * length(times)),
+                          time = double(length(models) * length(times)),
+                          X = double(length(models) * length(times)),
+                          Y = double(length(models) * length(times)),
+                          Z = double(length(models) * length(times)))
+
+pb <- progress::progress_bar$new(
+  format = "[:bar] :current/:total (:percent eta: :eta)", total = nrow(err))
+pb$tick(0)
+for (i in seq_along(models)) {
+  ODE <- getODEFromModelName(models[i])
+  iniState <- getIniStateFromModelName(models[i])
+  solution <- ode(iniState, times, ODE, params[[i]]) %>%
+    as.data.frame() %>%
+    as_tibble()
+  range <- (((i-1) * nrow(solution)) + 1):(i * nrow(solution))
+  out_comp_desolve[range,]$time <- solution$time
+  out_comp_desolve[range,3:5] <- c(solution[,-1], vector("double", 3 - ncol(solution[,-1])))
+  if (models[i] == "NAR") {
+    out_comp_desolve[range,4] <- out_comp_desolve[range,3]
+    out_comp_desolve[range,3] <- out_comp_desolve[range,2] >= 1 & out_comp_desolve[range,2] < 80
+  }
+  out_comp_desolve[range,]$id <- i
+  pb$tick(1)
+}
+
+# Combine datasets
+out_comp_desolve <- out_comp_desolve %>%
+  mutate(model = models[id])
+
+out_comp_desolve <- out_comp_desolve %>%
+  select(-id) %>%
+  mutate(method = "deSolve (LSODA)")
+
+out_comp_gsl <- out_comp_gsl %>%
+  select(-id)
+
+out_comp_gsl$time <- factor(out_comp_gsl$time)
+
+# Repeat each group
+out_diff <- out_comp_desolve %>%
+  group_by(model) %>%
+  slice(rep(1:n(), length(methods)))
+
+out_diff$method <- out_comp_gsl$method
+out_diff$time <- factor(out_diff$time)
+out_diff <- full_join(out_diff, out_comp_gsl, by = c("time", "model", "method"))
+
+out_diff_sep <- out_diff %>%
+  rename(X_desolve = X.x,
+         Y_desolve = Y.x,
+         Z_desolve = Z.x,
+         X_gsl = X.y,
+         Y_gsl = Y.y,
+         Z_gsl = Z.y) %>%
+  group_by(time, model, method) %>%
+  mutate(X_diff = X_gsl - X_desolve,
+         Y_diff = Y_gsl - Y_desolve,
+         Z_diff = Z_gsl - Z_desolve)
+
+out_diff_sep <- out_diff_sep %>%
+  pivot_longer(c(X_diff, Y_diff, Z_diff), names_to = "output", values_to = "diff",
+               names_pattern = "(.*)_diff")
+
+# Remove rows which don't make sense from NAR and VDP
+out_diff_sep <- out_diff_sep %>%
+  filter(!(model == "NAR" & output == "Z"),
+         !(model == "NAR" & output == "X"),
+         !(model == "VanDerPol" & output == "Z"))
+
+# Rename outputs
+out_diff_sep[out_diff_sep$model == "NAR" & out_diff_sep$output == "Y",]$output <- "Z"
+out_diff_sep[out_diff_sep$model == "VanDerPol" & out_diff_sep$output == "X",]$output <- "U"
+out_diff_sep[out_diff_sep$model == "VanDerPol" & out_diff_sep$output == "Y",]$output <- "V"
+
+# Boxplot
+ggplot(out_diff_sep %>%
+         mutate(output = factor(output, levels = c("X", "Y", "Z", "U", "V"))),
+       aes(x = method, y = diff, colour = output)) +
+  facet_nested("Model" + model ~ .,
+               scales = "free_y") +
+  geom_boxplot(whisker.linewidth = 0.1,
+               outliers = F) +
+  theme_bw() +
+  scale_colour_paletteer_d("calecopal::superbloom2") +
+  guides(colour = guide_legend(
+    nrow = 2, reverse = F, byrow = T
+  )) +
+  labs(x = "Stepper",
+       y = "Difference between deSolve vs GSL",
+       colour = "Output") +
+  theme(text = element_text(size = 12),
+        legend.position = "bottom") -> plt_sim_sep
+plt_sim_sep
+ggsave("plt_sims_sep.png", device = png, bg = "white", width = 6, height = 7)
+
+
+# Total difference across all traits
+out_diff_com <- out_diff %>%
+  rename(X_desolve = X.x,
+         Y_desolve = Y.x,
+         Z_desolve = Z.x,
+         X_gsl = X.y,
+         Y_gsl = Y.y,
+         Z_gsl = Z.y) %>%
+  group_by(time, model, method) %>%
+  # Since some models have different numbers of outputs,
+  # reset invalid comparisons so they don't contribute
+  mutate(Z_gsl = if_else(model == "NAR" | model == "VanDerPol", 0, Z_gsl),
+    diff = abs(X_gsl - X_desolve) + abs(Y_gsl - Y_desolve) + abs(Z_gsl - Z_desolve))
+
+# Boxplot
+ggplot(out_diff_com,
+       aes(x = method, y = diff)) +
+  facet_nested("Model" + model ~ .,
+               scales = "free_y") +
+  geom_boxplot(whisker.linewidth = 0.1,
+               outliers = F) +
+  theme_bw() +
+  labs(x = "Stepper",
+       y = "Total difference between deSolve vs GSL") +
+  theme(text = element_text(size = 12),
+        legend.position = "bottom") -> plt_sim_com
+plt_sim_com
+ggsave("plt_sims_com.png", device = png, bg = "white", width = 6, height = 7)
+
 
