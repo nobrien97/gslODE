@@ -18,7 +18,7 @@ int ODE_NAR(double t, const double z[], double dzdt[], void* params)
     double KXZn = pow(p[3], n); // Raise to power of n
     double KZn = pow(p[4], n);
     double a = p[6];
-    int X = t > tstart && t <= tend; 
+    int X = t >= tstart && t < tend; 
 
     double Xn = pow(X, n);
     double Zn = pow(z[0], n);
