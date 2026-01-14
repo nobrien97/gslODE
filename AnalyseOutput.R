@@ -187,6 +187,9 @@ plt_bench_reps
 ggsave("plt_benchmark_reps.png", device = png, bg = "white", width = 6, height = 8)
 
 # Similarity
+dt <- 0.01
+tmax <- 100
+times <- seq(0,tmax,by=dt)
 err <- expand.grid(methods, models)
 
 err <- err %>%
@@ -223,10 +226,6 @@ out_comp_gsl <- out_comp_gsl %>%
 # Run models in deSolve
 
 # Run R solution for comparison
-
-# Setup parameters
-dt <- 0.01
-tmax <- 100
 
 # Set parameter sets
 params <- list(NAR = c(Xstart = 1, Xstop = 80, b = 1, KXZ = 1, KZ = 1, n = 1, a = 1),
@@ -379,5 +378,4 @@ ggplot(out_diff_com,
         legend.position = "bottom") -> plt_sim_com
 plt_sim_com
 ggsave("plt_sims_com.png", device = png, bg = "white", width = 6, height = 7)
-
 
