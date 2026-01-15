@@ -25,7 +25,12 @@ Stepper performance was dependent on the system, but in general was fast (apart 
 
 We also measured solution similarities vs the R ```LSODA``` solver implemented in ```deSolve```:
 ![](./plt_sims_sep.png)
+
+With each output being one of the solutions for the ODE.
+The total difference across all equations is given below:
+
 ![](./plt_sims_com.png)
+
 
 Solutions were similar across solvers, except for the Lorenz system which is extremely chaotic and known to be sensitive to solver choice (so not surprising).
 
