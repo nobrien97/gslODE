@@ -13,7 +13,7 @@ and tests four different stepper functions
 - Variable-coefficient linear multistep Adams method in Nordsieck form (msadams)
 - Variable-coefficient linear multistep backward differentiation formula (BDF) method in Nordsieck form (msbdf)
 
-I ran performance tests on a AMD Ryzen 7 5800HS @3.2GHz with the test app compiled with -O3 via gcc
+I ran performance tests on a AMD Ryzen 7 5800HS @3.2GHz with the test app compiled with -O3 via gcc. Each model was run from time 0 to 100, with measurements taken every 0.01 units.
 
 I measured performance across 100 replicate runs at two absolute error targets:
 ![](./plt_benchmark_reps.png)
