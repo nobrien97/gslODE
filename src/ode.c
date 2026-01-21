@@ -2,7 +2,26 @@
 #include <math.h>
 #include <string.h>
 
-int ODE_NAR(double t, const double z[], double dzdt[], void* params)
+
+int ODE_Poly(double t, const double y[], double dydt[], void* params)
+{
+    // Polynomial function
+    double* p = (double*)params;
+
+    // First "parameter" is the length of the array
+    size_t n = (int)p[0];
+    double x = y[0];    // GSL syntax
+    double sum = 0.0;
+    for (int i = 0; i < n; ++i) 
+    {
+        sum += pars[i] * pow(x, n-1-i);
+    }
+    dydt[0] = sum;
+    return GSL_SUCCESS;
+
+}
+
+int ODE_NAR(double t, const double y[], double dydt[], void* params)
 {
     // Params is length 7
     double* p = (double*)params;
@@ -23,7 +42,7 @@ int ODE_NAR(double t, const double z[], double dzdt[], void* params)
     double Xn = pow(X, n);
     double Zn = pow(z[0], n);
 
-    dzdt[0] = b * (Xn / (KXZn + Xn)) * (KZn / (KZn + Zn)) - a * z[0];
+    dydt[0] = b * (Xn / (KXZn + Xn)) * (KZn / (KZn + Zn)) - a * z[0];
     return GSL_SUCCESS;
 }
 

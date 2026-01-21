@@ -20,10 +20,11 @@ struct ode
 };
 
 // ODEs
-int ODE_NAR(double t, const double z[], double dzdt[], void* params);
-int ODE_VanDerPol(double t, const double z[], double dzdt[], void* params);
-int ODE_Lorenz(double t, const double z[], double dzdt[], void* params);
-int ODE_Robertson(double t, const double z[], double dzdt[], void* params);
+int ODE_Poly(double t, const double y[], double dzdt[], void* params);
+int ODE_NAR(double t, const double y[], double dzdt[], void* params);
+int ODE_VanDerPol(double t, const double y[], double dzdt[], void* params);
+int ODE_Lorenz(double t, const double y[], double dzdt[], void* params);
+int ODE_Robertson(double t, const double y[], double dzdt[], void* params);
 
 // Jacobian
 int jac_robertson(double t, const double y[], double* dfdy, double dfdt[], void* params);
