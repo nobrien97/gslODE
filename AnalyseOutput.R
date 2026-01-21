@@ -150,7 +150,8 @@ base_call <- "./build/GSLODE -f 0.01 -t 100 -b"
 out_bench_reps <- data.frame(i = numeric(nrow(err)),
                         a_err = numeric(nrow(err)),
                         r_err = numeric(nrow(err)),
-                        t = numeric(nrow(err)))
+                        t_total = numeric(nrow(err)),
+                        t_const = numeric(nrow(err)))
 
 pb <- progress::progress_bar$new(
   format = "[:bar] :current/:total (:percent eta: :eta)", total = nrow(err))
@@ -170,7 +171,11 @@ out_bench_reps <- out_bench_reps %>%
   mutate(method = err[i,]$Var2,
          model = err[i,]$Var3)
 
-ggplot(out_bench_reps %>%
+out_bench_reps <- out_bench_reps %>%
+  pivot_longer(cols = c(t_total, t_const), names_to = "t_type", values_to = "t",
+               names_prefix = "t_")
+
+ggplot(out_bench_reps %>% filter(t_type == "total") %>%
          rename(err_a = a_err,
                 err_r = r_err) %>%
          pivot_longer(cols = c(err_a, err_r), names_prefix = "err_",
@@ -185,6 +190,22 @@ ggplot(out_bench_reps %>%
   theme(text = element_text(size = 12), legend.position = "bottom") -> plt_bench_reps
 plt_bench_reps
 ggsave("plt_benchmark_reps.png", device = png, bg = "white", width = 6, height = 8)
+
+ggplot(out_bench_reps %>%
+         rename(err_a = a_err,
+                err_r = r_err) %>%
+         pivot_longer(cols = c(err_a, err_r), names_prefix = "err_",
+                      names_to = "err_type", values_to = "err_value"),
+       aes(x = method, y = t, colour = model)) +
+  facet_nested("Absolute error" + as.factor(err_value)~"Total/Setup time" + t_type) +
+  geom_boxplot() +
+  scale_y_log10() +
+  labs(x = "Stepping function", y = "Time (s)", colour = "Model") +
+  scale_colour_paletteer_d("nationalparkcolors::Everglades") +
+  theme_bw() +
+  theme(text = element_text(size = 12), legend.position = "bottom") -> plt_bench_reps_const
+plt_bench_reps_const
+ggsave("plt_benchmark_reps_const.png", device = png, bg = "white", width = 9, height = 7)
 
 # Similarity
 dt <- 0.01

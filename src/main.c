@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
     fprintf(stderr, "-------- Solving ODE with GSL --------\n");
 
     // Time solver
-    clock_t start_t, end_t;
+    clock_t start_t, end_t, setup_t;
     start_t = clock();
 
     // Setup default parameters
@@ -246,6 +246,7 @@ int main(int argc, char* argv[])
     gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&sys, stepper,
                             1e-10, a_err, r_err);
 
+    setup_t = clock();
 
     while(fgets(buff, sizeof(buff), fp))
     {
@@ -297,8 +298,9 @@ int main(int argc, char* argv[])
             if (benchmark == 1)
             {
                 end_t = clock();
-                double time = (double)(end_t - start_t) / CLOCKS_PER_SEC;
-                fprintf(stdout, "%d, %.8le, %.8le, %.8le", par_id, a_err, r_err, time);
+                double time_end = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+                double time_setup = (double)(setup_t - start_t) / CLOCKS_PER_SEC;
+                fprintf(stdout, "%d, %.8le, %.8le, %.8le, %.8le", par_id, a_err, r_err, time_end, time_setup);
             }
             
             // Check for errors

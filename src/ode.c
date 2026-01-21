@@ -192,7 +192,6 @@ int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, doubl
 {
     double t = 0;
     int status = 0;
-    size_t n_y = ODE->n_y;
     double* y = ODE->y;
 
     int max_iter = max_time / measure_interval;
@@ -209,13 +208,13 @@ int solve(gsl_odeiv2_driver* d, int max_time, struct ode* ODE, int par_id, doubl
         // print solution to std out
         if (benchmark == 0)
         {
-            print_ode(ODE, par_id, t, benchmark);
+            print_ode(ODE, par_id, t);
         }
     }
     return GSL_SUCCESS;
 }
 
-int print_ode(struct ode* ODE, int par_id, double t, int benchmark)
+int print_ode(struct ode* ODE, int par_id, double t)
 {
     size_t n_y = ODE->n_y;
     double* y = ODE->y;

@@ -47,6 +47,6 @@ int update_ode_start_conditions(struct ode* ODE, double* new_y, size_t n_new_y);
 
 int update_ode(struct ode* ODE, double* new_pars, size_t n_new_pars, double* new_y, size_t n_new_y);
 
-int print_ode(struct ode* ODE, int par_id, double t, int benchmark);
+int print_ode(struct ode* ODE, int par_id, double t);
 
 int method_requires_jacobian(const char* method_name);
