@@ -8,11 +8,11 @@ int ODE_Poly(double t, const double y[], double dydt[], void* params)
     // Polynomial function
     double* p = (double*)params;
 
-    // First "parameter" is the length of the array
+    // First "parameter" is the length of the array (inclusive of this)
     size_t n = (int)p[0];
     double x = y[0];    // GSL syntax
     double sum = 0.0;
-    for (int i = 0; i < n; ++i) 
+    for (int i = 1; i < n; ++i) 
     {
         sum += p[i] * pow(x, n-1-i);
     }
@@ -40,7 +40,7 @@ int ODE_NAR(double t, const double y[], double dydt[], void* params)
     int X = t >= tstart && t < tend; 
 
     double Xn = pow(X, n);
-    double Zn = pow(z[0], n);
+    double Zn = pow(y[0], n);
 
     dydt[0] = b * (Xn / (KXZn + Xn)) * (KZn / (KZn + Zn)) - a * z[0];
     return GSL_SUCCESS;
