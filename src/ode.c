@@ -42,7 +42,7 @@ int ODE_NAR(double t, const double y[], double dydt[], void* params)
     double Xn = pow(X, n);
     double Zn = pow(y[0], n);
 
-    dydt[0] = b * (Xn / (KXZn + Xn)) * (KZn / (KZn + Zn)) - a * z[0];
+    dydt[0] = b * (Xn / (KXZn + Xn)) * (KZn / (KZn + Zn)) - a * y[0];
     return GSL_SUCCESS;
 }
 
