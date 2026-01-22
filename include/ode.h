@@ -21,6 +21,10 @@ struct ode
 
 // ODEs
 int ODE_Poly(double t, const double y[], double dzdt[], void* params);
+int ODE_SimpleRegulation(double t, const double y[], double dzdt[], void* params);
+int ODE_PositiveHill(double t, const double y[], double dzdt[], void* params);
+int ODE_NegativeHill(double t, const double y[], double dzdt[], void* params);
+
 int ODE_NAR(double t, const double y[], double dzdt[], void* params);
 int ODE_VanDerPol(double t, const double y[], double dzdt[], void* params);
 int ODE_Lorenz(double t, const double y[], double dzdt[], void* params);

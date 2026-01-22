@@ -21,6 +21,34 @@ int ODE_Poly(double t, const double y[], double dydt[], void* params)
 
 }
 
+int ODE_SimpleRegulation(double t, const double y[], double dydt[], void* params)
+{
+    double* p = (double*)params;
+    dydt[0] = p[1] - p[0] * y[0];
+    return GSL_SUCCESS;
+}
+
+int ODE_PositiveHill(double t, const double y[], double dydt[], void* params)
+{
+    double* p = (double*)params;
+    double Kn = pow(p[2], p[3]);
+    double Xn = pow(y[0], p[3]);
+
+    dydt[0] = p[1] * ( Xn / (Kn + Xn) ) - p[0] * y[0];
+    return GSL_SUCCESS;
+}
+
+int ODE_NegativeHill(double t, const double y[], double dydt[], void* params)
+{
+    double* p = (double*)params;
+    double Kn = pow(p[2], p[3]);
+    double Xn = pow(y[0], p[3]);
+
+    dydt[0] = p[1] * ( Kn / (Kn + Xn) ) - p[0] * y[0];
+    return GSL_SUCCESS;
+}
+
+
 int ODE_NAR(double t, const double y[], double dydt[], void* params)
 {
     // Params is length 7
