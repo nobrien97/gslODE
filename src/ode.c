@@ -14,7 +14,7 @@ int ODE_Poly(double t, const double y[], double dydt[], void* params)
     double sum = 0.0;
     for (int i = 0; i < n; ++i) 
     {
-        sum += pars[i] * pow(x, n-1-i);
+        sum += p[i] * pow(x, n-1-i);
     }
     dydt[0] = sum;
     return GSL_SUCCESS;
