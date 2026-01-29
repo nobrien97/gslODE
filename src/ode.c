@@ -143,6 +143,56 @@ int jac_poly(double t, const double y[], double* dfdy, double dfdt[], void* para
 
 }
 
+int jac_SimpleRegulation(double t, const double y[], double* dfdy, double dfdt[], void* params)
+{
+    // Polynomial function
+    double* p = (double*)params;
+
+
+    gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 1, 1);
+    gsl_matrix *m = &dfdy_mat.matrix;
+
+    gsl_matrix_set (m, 0, 0, p[0]);
+    dfdy[0] = 0.0;
+    return GSL_SUCCESS;
+}
+
+int jac_PositiveHill(double t, const double y[], double* dfdy, double dfdt[], void* params)
+{
+    // Polynomial function
+    double* p = (double*)params;
+
+    double Kn = pow(p[2], p[3]);
+    double Xn = pow(y[0], p[3] - 1);
+    double Xn1 = pow(y[0], p[3] - 1);
+
+    
+    gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 1, 1);
+    gsl_matrix *m = &dfdy_mat.matrix;
+    
+    gsl_matrix_set (m, 0, 0, (p[1] * p[3] * Xn1 * Kn) / pow(Kn + Xn, 2) - p[0]);
+    dfdy[0] = 0.0;
+    return GSL_SUCCESS;
+}
+
+int jac_NegativeHill(double t, const double y[], double* dfdy, double dfdt[], void* params)
+{
+    // Polynomial function
+    double* p = (double*)params;
+
+    double Kn = pow(p[2], p[3]);
+    double Xn = pow(y[0], p[3] - 1);
+    double Xn1 = pow(y[0], p[3] - 1);
+
+    
+    gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 1, 1);
+    gsl_matrix *m = &dfdy_mat.matrix;
+    
+    gsl_matrix_set (m, 0, 0, -(p[1] * Kn * p[3] * Xn1) / pow(Kn + Xn, 2) - p[0]);
+    dfdy[0] = 0.0;
+    return GSL_SUCCESS;
+}
+
 
 int jac_robertson(double t, const double y[], double* dfdy, double dfdt[], void* params)
 {
