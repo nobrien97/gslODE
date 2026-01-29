@@ -31,6 +31,11 @@ int ODE_Lorenz(double t, const double y[], double dzdt[], void* params);
 int ODE_Robertson(double t, const double y[], double dzdt[], void* params);
 
 // Jacobian
+int jac_poly(double t, const double y[], double* dfdy, double dfdt[], void* params);
+int jac_SimpleRegulation(double t, const double y[], double* dfdy, double dfdt[], void* params);
+int jac_PositiveHill(double t, const double y[], double* dfdy, double dfdt[], void* params);
+int jac_NegativeHill(double t, const double y[], double* dfdy, double dfdt[], void* params);
+
 int jac_robertson(double t, const double y[], double* dfdy, double dfdt[], void* params);
 int jac_nar(double t, const double y[], double* dfdy, double dfdt[], void* params);
 int jac_vanderpol(double t, const double y[], double* dfdy, double dfdt[], void* params);

@@ -120,6 +120,30 @@ int ODE_Robertson(double t, const double y[], double f[], void* params)
     return GSL_SUCCESS;
 }
 
+int jac_poly(double t, const double y[], double* dfdy, double dfdt[], void* params)
+{
+    // Polynomial function
+    double* p = (double*)params;
+
+    gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 1, 1);
+    gsl_matrix *m = &dfdy_mat.matrix;
+
+
+    // First "parameter" is the length of the array (inclusive of this)
+    size_t n = (int)p[0];
+    double x = y[0];    // GSL syntax
+    double sum = 0.0;
+    for (int i = 2; i < n; ++i) // First parameter is skipped over, f'(t) of a_0 = 0 
+    {
+        sum += p[i] * (n-i) * pow(x, n-1-i);
+    }
+    gsl_matrix_set (m, 0, 0, sum);
+    dfdy[0] = 0.0;
+    return GSL_SUCCESS;
+
+}
+
+
 int jac_robertson(double t, const double y[], double* dfdy, double dfdt[], void* params)
 {
     (void)(t); /* avoid unused parameter warning */
